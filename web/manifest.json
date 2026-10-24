@@ -1,11 +1,11 @@
 {
-    "name": "tracktrash_mobile",
-    "short_name": "tracktrash_mobile",
+    "name": "TrackTrash",
+    "short_name": "TrackTrash",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F6FAF7",
+    "theme_color": "#087F5B",
+    "description": "Conecta, recolecta y recicla en Arequipa.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
