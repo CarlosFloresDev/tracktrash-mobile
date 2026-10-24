@@ -1,75 +1,64 @@
-# TrackTrash Mobile
+# TrackTrash Mobile · 0.2
 
-App Flutter independiente para TrackTrash. Backend: [tracktrash-backend](https://github.com/CarlosFloresDev/tracktrash-backend).
+Flutter para conectar vecinos y recicladores de Arequipa. [Backend C# separado](https://github.com/CarlosFloresDev/tracktrash-backend). Interfaz en español con identidad Tacho Vivo, ilustración original, iconos nativos, navegación adaptable y animaciones que respetan movimiento reducido.
 
-## Primer incremento
+![Inicio móvil](docs/screenshots/inicio-mobile.png)
 
-Acceso local de demostración como vecino/reciclador; creación de solicitudes, listado con estados, aceptación, código de confirmación e historial de puntos. Las pantallas consumen la API real; no incluyen datos ficticios como sustituto de una conexión fallida. Guía básica de materiales incluida.
+## Recorridos disponibles
 
-Registro/login de usuarios reales, caché persistente sin conexión, mapa, sensores, incidencias, fotos y push siguen pendientes. El modo de demostración aparece identificado y se desactiva por defecto en compilaciones release.
+- Inicio con accesos rápidos, guía de materiales y seguimiento de recojos.
+- Mapa/lista con contenedores, aliados y puntos de acopio, filtros, origen y antigüedad; GPS opcional y reportes de nivel.
+- Recojos con asignación cercana, aceptación, viaje, código privado, cancelación e historial.
+- Puntos, rachas, beneficios con stock/canje y movimientos propios. Cantidades estimadas, sin atribuir CO2.
+- Perfil, incidencias, bandeja de avisos, horarios y recordatorios por suscripción.
+- Acceso demo vecino/reciclador/operador y panel operativo adaptable a web.
+- Integración de registro/login Supabase, renovación y almacenamiento seguro; falta probar credenciales y configuración del proyecto real.
+
+Las pantallas consumen API y PostgreSQL reales. Datos de aliados, ubicaciones, horarios y beneficios de demostración están identificados; no representan convenios ni GPS de camiones. [Cobertura completa RF/RNF y pendientes](https://github.com/CarlosFloresDev/tracktrash-backend/blob/feat/ecosistema-tracktrash/docs/MATRIZ_COBERTURA.md).
 
 ## Ejecutar
 
-SDK Flutter 3.41.6 / Dart 3.11.4, fijado en `.fvmrc`. El lockfile contiene versiones compatibles; no es necesario actualizar el SDK global. Si utilizas FVM, ejecuta sus comandos equivalentes con `fvm flutter`.
-
-Primero iniciar backend y PostgreSQL siguiendo su README. Para probar en Edge:
+Flutter 3.41.6 / Dart 3.11.4 fijados en `.fvmrc`; conservar lockfile y no actualizar el SDK global por este proyecto. Iniciar backend/BD según su README.
 
 ```powershell
-flutter pub get
-flutter run -d edge --web-port=5300 --dart-define=API_BASE_URL=http://localhost:5080 --dart-define=DEMO_MODE=true
+flutter pub get --enforce-lockfile
+flutter run -d edge --web-port=5300 --dart-define=DEMO_MODE=true --dart-define=API_BASE_URL=http://localhost:5080
 ```
 
-Android Emulator utiliza `10.0.2.2` para acceder al equipo anfitrión:
+Android Emulator: API_BASE_URL `http://10.0.2.2:5080`. Teléfono físico: IP LAN del servidor con acceso local habilitado deliberadamente. HTTP solo en debug; producción requiere HTTPS. El modo demo se desactiva por defecto en release y también debe estar desactivado en el servidor.
+
+Para Supabase configurar los tres valores de cliente:
 
 ```powershell
-flutter run -d <id-android> --dart-define=API_BASE_URL=http://10.0.2.2:5080 --dart-define=DEMO_MODE=true
+flutter run -d edge --web-port=5300 --dart-define=DEMO_MODE=false --dart-define=API_BASE_URL=https://<api> --dart-define=SUPABASE_URL=https://<referencia>.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=<clave-publicable>
 ```
 
-En teléfono físico usar la IP LAN del equipo y exponer la API solo en la red de desarrollo; el README del backend incluye el comando. HTTP local se admite únicamente en el manifest de debug. Producción requiere HTTPS.
+Nunca usar conexión SQL ni service_role en Flutter. Rol efectivo lo devuelve la API. Sesiones Auth en FlutterSecureStorage, demostración en memoria. La recuperación actual solicita el correo; falta completar/configurar retorno y cambio de contraseña, SMTP y pruebas remotas.
 
-## Probar el recorrido
+## Mapa y conexión
 
-1. Ingresar como vecino y solicitar un recojo con datos de prueba.
-2. Copiar el código visible en la tarjeta del vecino.
-3. Cerrar sesión e ingresar como reciclador.
-4. Aceptar el recojo; la dirección se habilita después de aceptarlo.
-5. Confirmar con el código compartido por el vecino.
-6. Volver como vecino o actualizar su sesión abierta: entrega confirmada y 20 puntos.
+Se consulta el mapa cada 30 segundos en primer plano. SharedPreferences guarda solo el último mapa público, con advertencia de antigüedad al recuperar la caché. No guarda direcciones privadas, códigos, perfiles ni tokens. No hay cola offline para escrituras; confirmaciones/canjes necesitan servidor.
 
-El cambio de rol es una herramienta local de demostración, no una forma de asignar permisos en producción. La sesión actual vive en memoria; no se persisten tokens de prueba. El paquete secure storage queda preparado para el siguiente incremento de autenticación.
+Mapa base OpenStreetMap con atribución y proveedor configurable mediante `MAP_TILE_URL`. Sus mosaicos necesitan conexión y tienen [política de uso](https://operations.osmfoundation.org/policies/tiles/); seleccionar proveedor/contrato apropiado antes de un piloto público. Caché de puntos no equivale a mapas base descargados. [Guía oficial flutter_map](https://docs.fleaflet.dev/tile-servers/using-openstreetmap-direct).
 
-## Validación
+## Validación y compilación
 
 ```powershell
 dart format --output=none --set-exit-if-changed lib test
 flutter analyze
 flutter test
 flutter build web --dart-define=DEMO_MODE=true --dart-define=API_BASE_URL=http://localhost:5080
+flutter build apk --debug --dart-define=DEMO_MODE=true --dart-define=API_BASE_URL=http://10.0.2.2:5080
 ```
 
-Las pruebas cubren validación/interacción de formulario, serialización, encabezados de identidad, errores, doble envío, reintentos y estado del ViewModel. Se verificaron compilaciones web y APK debug; este último se genera en `build/app/outputs/flutter-apk/app-debug.apk` y no se versiona. Falta instalarlo y probarlo en un teléfono/emulador. iOS requiere macOS/Xcode y no se ha compilado.
+19 pruebas aprobadas: formulario, red/identidad, reintentos, doble envío, ciclo del ViewModel, caché pública y su falla/recuperación, almacenamiento seguro y serialización. Web y APK debug compilados; APK en `build/app/outputs/flutter-apk/app-debug.apk`, ignorado por Git. Apunta a Android Emulator; recompilar con IP LAN para teléfono físico. Falta instalar/probar en Android e iOS; iOS requiere macOS/Xcode y no se compiló en Windows.
 
-Para generar el APK local de demostración:
+`tools/smoke_web.py` ofrece un recorrido real con Playwright/Edge contra API demo y web local. Crea datos de prueba sin borrar recojos existentes. Dependencia opcional de QA: Python + paquete playwright. Capturas en [docs/screenshots](docs/screenshots).
 
-```powershell
-flutter build apk --debug --dart-define=API_BASE_URL=http://10.0.2.2:5080 --dart-define=DEMO_MODE=true
-```
+Iconos reproducibles: `dart run flutter_launcher_icons`. [Procedencia y prompt de la ilustración](assets/README.md). Imágenes generadas con herramienta imagegen y usadas como recurso local, sin llamadas a IA en la app.
 
-Ese APK apunta al equipo anfitrión de Android Emulator. Para teléfono físico, reemplazar la URL por la IP LAN del servidor antes de compilar.
+## Estructura
 
-## Arquitectura
+`app` compone tema/router/dependencias; `core` configura red/errores/seguridad. `features/session` integra acceso; `pickups` y `community` separan modelos, repositorios y presentación con Riverpod/ViewModels. Pantallas sin Dio directo; permisos, saldos y reglas definitivos en C#.
 
-- `app`: tema, router y registro de dependencias.
-- `core`: configuración y errores de comunicación.
-- `features/session`: estado de sesión y bienvenida.
-- `features/pickups/domain`: modelos inmutables.
-- `features/pickups/data`: contrato y repositorio API con Dio.
-- `features/pickups/presentation`: ViewModel y pantallas.
-
-Riverpod crea/inyecta dependencias y expone ViewModels ChangeNotifier, siguiendo MVVM. Las pantallas no llaman a Dio ni deciden reglas de puntos. go_router protege rutas según la sesión. Las reglas y permisos definitivos se verifican en C#.
-
-API v1: contrato documentado en [backend/docs/API.md](https://github.com/CarlosFloresDev/tracktrash-backend/blob/feat/primer-flujo-recojos/docs/API.md). Próximos módulos: identidad real, aliados/mapa, cancelación, contenedores/incidencias y notificaciones.
-
-## Git
-
-`main` mantiene la base integrada, las tareas se desarrollan en ramas `feat/<tarea>` y se revisan mediante pull requests. CI ejecuta formato, análisis, pruebas y compilación web.
+CI verifica formato, análisis, pruebas y compilación web. Commits por cambio coherente y ramas `feat/<tarea>`; consultar AGENTS.md para continuar. Faltan fotos/Storage, push real, depósitos validados, instituciones, camiones/ETA y validación operativa; no se presentan como completados.
