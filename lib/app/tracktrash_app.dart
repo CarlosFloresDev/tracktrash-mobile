@@ -2,7 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../features/pickups/presentation/home_screen.dart';
+import '../features/community/presentation/workspace_screen.dart';
+import '../features/community/presentation/notices_page.dart';
+import '../features/community/presentation/issues_page.dart';
+import '../features/community/presentation/operation_page.dart';
+import '../features/community/presentation/routes_page.dart';
+import '../ui/eco_design.dart';
+import '../features/session/login_screen.dart';
 import '../features/pickups/presentation/create_pickup_screen.dart';
 import '../features/session/welcome_screen.dart';
 import 'providers.dart';
@@ -14,9 +20,17 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final signedIn = session.session != null;
       if (!signedIn) {
+        if (state.matchedLocation == '/acceso') return null;
         return state.matchedLocation == '/bienvenida' ? null : '/bienvenida';
       }
-      if (state.matchedLocation == '/bienvenida') return '/';
+      if (state.matchedLocation == '/bienvenida' ||
+          state.matchedLocation == '/acceso') {
+        return '/';
+      }
+      if (state.matchedLocation == '/operacion' &&
+          session.session!.role != 'admin') {
+        return '/';
+      }
       if (session.session!.isRecycler &&
           state.matchedLocation == '/solicitar') {
         return '/';
@@ -25,7 +39,21 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/bienvenida', builder: (_, _) => const WelcomeScreen()),
-      GoRoute(path: '/', builder: (_, _) => const HomeScreen()),
+      GoRoute(
+        path: '/acceso',
+        builder: (_, s) =>
+            LoginScreen(register: s.uri.queryParameters['registro'] == 'true'),
+      ),
+      GoRoute(path: '/', builder: (_, _) => const WorkspaceScreen()),
+      GoRoute(path: '/notificaciones', builder: (_, _) => const NoticesPage()),
+      GoRoute(path: '/horarios', builder: (_, _) => const RoutesPage()),
+      GoRoute(
+        path: '/incidencias',
+        builder: (_, s) => IssuesPage(
+          initialContainerId: s.uri.queryParameters['contenedorId'],
+        ),
+      ),
+      GoRoute(path: '/operacion', builder: (_, _) => const OperationPage()),
       GoRoute(
         path: '/solicitar',
         builder: (_, _) => const CreatePickupScreen(),
@@ -46,31 +74,7 @@ class TrackTrashApp extends ConsumerWidget {
     locale: const Locale('es', 'PE'),
     supportedLocales: const [Locale('es', 'PE')],
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
-    theme: ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF087F5B),
-        primary: const Color(0xFF087F5B),
-        surface: const Color(0xFFF6FAF7),
-      ),
-      scaffoldBackgroundColor: const Color(0xFFF6FAF7),
-      inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          minimumSize: const Size(48, 52),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      ),
-      cardTheme: const CardThemeData(
-        elevation: 0,
-        color: Colors.white,
-        margin: EdgeInsets.only(bottom: 12),
-      ),
-    ),
+    theme: ecoTheme(),
     routerConfig: ref.watch(routerProvider),
   );
 }
