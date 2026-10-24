@@ -5,6 +5,9 @@ import '../../../core/api_failure.dart';
 import '../domain/community_models.dart';
 
 abstract interface class CommunityRepository {
+  Future<List<Map<String, dynamic>>> routes();
+  Future<void> subscribe(String id, bool enabled);
+  Future<void> reportPass(String id);
   Future<CommunityMap> map({double lat = -16.3988, double lng = -71.5369});
   Future<CommunityProfile> profile();
   Future<void> saveProfile(CommunityProfile profile);
@@ -25,6 +28,19 @@ abstract interface class CommunityRepository {
 }
 
 class ApiCommunityRepository implements CommunityRepository {
+  @override
+  Future<List<Map<String, dynamic>>> routes() => _list('rutas');
+  @override
+  Future<void> subscribe(String id, bool enabled) => enabled
+      ? _post('rutas/$id/suscripcion', {'minutosAntes': 20})
+      : _request(() async {
+          await _dio.delete<dynamic>(
+            '/api/v1/rutas/$id/suscripcion',
+            options: _options,
+          );
+        });
+  @override
+  Future<void> reportPass(String id) => _post('rutas/$id/paso');
   ApiCommunityRepository(this._dio, this._token);
   final Dio _dio;
   final String _token;
@@ -74,11 +90,12 @@ class ApiCommunityRepository implements CommunityRepository {
     } on ApiFailure {
       try {
         final stored = await cache.getString(key);
-        if (stored != null)
+        if (stored != null) {
           return CommunityMap.fromJson(
             jsonDecode(stored) as Map<String, dynamic>,
             cached: true,
           );
+        }
       } catch (_) {
         /* Caché ausente o incompatible. */
       }

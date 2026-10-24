@@ -30,6 +30,9 @@ final redemptionsProvider = FutureProvider(
 final metricsProvider = FutureProvider(
   (ref) => ref.watch(communityRepositoryProvider).metrics(),
 );
+final routesProvider = FutureProvider(
+  (ref) => ref.watch(communityRepositoryProvider).routes(),
+);
 final communityActionsProvider = ChangeNotifierProvider.autoDispose(
   (ref) => CommunityActions(ref.watch(communityRepositoryProvider), () {
     ref.invalidate(profileProvider);
@@ -38,6 +41,7 @@ final communityActionsProvider = ChangeNotifierProvider.autoDispose(
     ref.invalidate(rewardsProvider);
     ref.invalidate(redemptionsProvider);
     ref.invalidate(metricsProvider);
+    ref.invalidate(routesProvider);
     ref.read(pickupsProvider).load();
   }),
 );

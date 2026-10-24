@@ -4,6 +4,9 @@ import '../data/community_repository.dart';
 import '../domain/community_models.dart';
 
 class CommunityActions extends ChangeNotifier {
+  Future<bool> subscribe(String id, bool enabled) =>
+      _run(() => _repo.subscribe(id, enabled));
+  Future<bool> reportPass(String id) => _run(() => _repo.reportPass(id));
   CommunityActions(this._repo, this._onChanged);
   final CommunityRepository _repo;
   final VoidCallback _onChanged;

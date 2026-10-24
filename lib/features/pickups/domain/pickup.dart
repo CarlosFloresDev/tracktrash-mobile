@@ -65,12 +65,17 @@ class PickupDraft {
     required this.kg,
     required this.address,
     required this.scheduledAt,
+    this.lat,
+    this.lng,
+    this.autoAssign = false,
   });
   final String key;
   final RecyclableMaterial material;
   final double kg;
   final String address;
   final DateTime scheduledAt;
+  final double? lat, lng;
+  final bool autoAssign;
 
   Map<String, dynamic> toJson() => {
     'claveSolicitud': key,
@@ -78,5 +83,8 @@ class PickupDraft {
     'cantidadEstimadaKg': kg,
     'direccion': address.trim(),
     'programadaPara': scheduledAt.toUtc().toIso8601String(),
+    if (lat != null) 'latitud': lat,
+    if (lng != null) 'longitud': lng,
+    'autoAsignar': autoAssign,
   };
 }
