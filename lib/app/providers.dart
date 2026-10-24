@@ -23,8 +23,7 @@ final sessionProvider = ChangeNotifierProvider<SessionController>(
 
 final pickupRepositoryProvider = Provider<PickupRepository>((ref) {
   final session = ref.watch(sessionProvider).session;
-  if (session == null) throw StateError('Se requiere iniciar sesión.');
-  return ApiPickupRepository(ref.watch(dioProvider), session.token);
+  return ApiPickupRepository(ref.watch(dioProvider), session?.token ?? '');
 });
 
 final pickupsProvider = ChangeNotifierProvider.autoDispose<PickupsViewModel>(

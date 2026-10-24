@@ -17,6 +17,9 @@ class ApiPickupRepository implements PickupRepository {
   Options get _options => Options(headers: {'Authorization': 'Bearer $_token'});
 
   Future<T> _request<T>(Future<T> Function() action) async {
+    if (_token.isEmpty) {
+      throw const ApiFailure('Inicia sesión para continuar.');
+    }
     try {
       return await action();
     } on DioException catch (e) {

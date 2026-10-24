@@ -9,11 +9,34 @@ import 'support/fake_pickup_repository.dart';
 
 class TestSession extends SessionController {
   TestSession() : super(Dio());
+  UserSession? _current = const UserSession(token: 'test', role: 'vecino');
   @override
-  UserSession get session => const UserSession(token: 'test', role: 'vecino');
+  UserSession? get session => _current;
+
+  @override
+  void signOut() {
+    _current = null;
+    notifyListeners();
+  }
 }
 
 void main() {
+  testWidgets(
+    'cerrar sesión elimina el estado privado sin errores de proveedores',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [sessionProvider.overrideWith((ref) => TestSession())],
+          child: const TrackTrashApp(),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.byTooltip('Cerrar sesión'));
+      await tester.pumpAndSettle();
+      expect(find.text('Probar como vecino'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets(
     'valida el formulario y muestra el recojo persistido por el repositorio',
     (tester) async {
