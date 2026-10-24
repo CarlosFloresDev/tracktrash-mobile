@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
@@ -17,11 +18,24 @@ class ExplorePage extends ConsumerStatefulWidget {
 }
 
 class _ExplorePageState extends ConsumerState<ExplorePage> {
+  Timer? _timer;
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted &&
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        ref.invalidate(mapProvider);
+      }
+    });
+  }
+
   final _controller = MapController();
   String _filter = 'todos';
   bool _list = false;
   @override
   void dispose() {
+    _timer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -268,6 +282,14 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
                 icon: const Icon(Icons.report_outlined),
                 label: const Text('Reportar un problema'),
               ),
+              const SizedBox(height: 10),
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _level(p);
+                },
+                child: const Text('Reportar nivel estimado'),
+              ),
             ] else ...[
               Text(p.address),
               if (p.materials.isNotEmpty)
@@ -314,6 +336,65 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
           const SnackBar(
             content: Text(
               'No pudimos acceder a tu ubicación. Puedes explorar el mapa manualmente.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _level(MapPlace p) async {
+    double level = (p.percent ?? 50).toDouble();
+    final result = await showDialog<int>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, update) => AlertDialog(
+          title: const Text('¿Qué tan lleno está?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${level.round()}%',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              Slider(
+                value: level,
+                min: 0,
+                max: 100,
+                divisions: 10,
+                label: '${level.round()}%',
+                onChanged: (v) => update(() => level = v),
+              ),
+              const Text(
+                'Estimación visual no verificada. No otorga puntos ni reemplaza una lectura reciente del sensor.',
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Volver'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, level.round()),
+              child: const Text('Enviar nivel'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result != null && mounted) {
+      final ok = await ref
+          .read(communityActionsProvider)
+          .reportLevel(p.id, result);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ok
+                  ? 'Nivel reportado. Gracias por colaborar.'
+                  : ref.read(communityActionsProvider).error ??
+                        'No se pudo reportar el nivel.',
             ),
           ),
         );

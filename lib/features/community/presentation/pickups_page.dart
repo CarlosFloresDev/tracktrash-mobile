@@ -247,7 +247,7 @@ class PickupsPage extends ConsumerWidget {
 
   Future<void> _history(BuildContext context, WidgetRef ref, String id) async {
     try {
-      final items = await ref.read(communityRepositoryProvider).history(id);
+      final items = await ref.read(communityActionsProvider).history(id);
       if (!context.mounted) return;
       await showModalBottomSheet<void>(
         context: context,

@@ -106,7 +106,7 @@ class RoutesPage extends ConsumerWidget {
                                         final ok = await actions.reportPass(
                                           r['id'] as String,
                                         );
-                                        if (ok && context.mounted)
+                                        if (ok && context.mounted) {
                                           ScaffoldMessenger.of(
                                             context,
                                           ).showSnackBar(
@@ -116,6 +116,7 @@ class RoutesPage extends ConsumerWidget {
                                               ),
                                             ),
                                           );
+                                        }
                                       },
                                 icon: const Icon(Icons.campaign_outlined),
                                 label: const Text(

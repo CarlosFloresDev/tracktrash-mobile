@@ -68,10 +68,13 @@ class CommunityProfile {
     required this.alerts,
     this.lat,
     this.lng,
+    this.streak = 0,
+    this.bestStreak = 0,
   });
   final String name, phone, address;
   final bool alerts;
   final double? lat, lng;
+  final int streak, bestStreak;
   factory CommunityProfile.fromJson(Map<String, dynamic> j) => CommunityProfile(
     name: j['nombre'] as String,
     phone: j['telefono'] as String,
@@ -79,6 +82,8 @@ class CommunityProfile {
     alerts: j['recibirAvisos'] as bool,
     lat: (j['latitud'] as num?)?.toDouble(),
     lng: (j['longitud'] as num?)?.toDouble(),
+    streak: j['rachaActual'] as int? ?? 0,
+    bestStreak: j['rachaMaxima'] as int? ?? 0,
   );
   Map<String, dynamic> toJson() => {
     'nombre': name,

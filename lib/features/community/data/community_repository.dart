@@ -5,6 +5,8 @@ import '../../../core/api_failure.dart';
 import '../domain/community_models.dart';
 
 abstract interface class CommunityRepository {
+  Future<void> reportLevel(String id, int percentage);
+  Future<List<Map<String, dynamic>>> movements();
   Future<List<Map<String, dynamic>>> routes();
   Future<void> subscribe(String id, bool enabled);
   Future<void> reportPass(String id);
@@ -28,6 +30,11 @@ abstract interface class CommunityRepository {
 }
 
 class ApiCommunityRepository implements CommunityRepository {
+  @override
+  Future<void> reportLevel(String id, int percentage) =>
+      _post('contenedores/$id/reporte-nivel', {'porcentaje': percentage});
+  @override
+  Future<List<Map<String, dynamic>>> movements() => _list('perfil/movimientos');
   @override
   Future<List<Map<String, dynamic>>> routes() => _list('rutas');
   @override

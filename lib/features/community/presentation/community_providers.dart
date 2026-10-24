@@ -33,6 +33,9 @@ final metricsProvider = FutureProvider(
 final routesProvider = FutureProvider(
   (ref) => ref.watch(communityRepositoryProvider).routes(),
 );
+final movementsProvider = FutureProvider(
+  (ref) => ref.watch(communityRepositoryProvider).movements(),
+);
 final communityActionsProvider = ChangeNotifierProvider.autoDispose(
   (ref) => CommunityActions(ref.watch(communityRepositoryProvider), () {
     ref.invalidate(profileProvider);
@@ -42,6 +45,8 @@ final communityActionsProvider = ChangeNotifierProvider.autoDispose(
     ref.invalidate(redemptionsProvider);
     ref.invalidate(metricsProvider);
     ref.invalidate(routesProvider);
+    ref.invalidate(movementsProvider);
+    ref.invalidate(mapProvider);
     ref.read(pickupsProvider).load();
   }),
 );

@@ -120,7 +120,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Avisos de actividad'),
+            title: const Text('Recordatorios de horarios'),
             subtitle: const Text(
               'Guarda tu preferencia para avisos de recojos y reportes.',
             ),
