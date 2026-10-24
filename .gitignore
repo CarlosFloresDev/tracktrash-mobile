@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# Toolchains y evidencias locales
+.fvm/
+android/.kotlin/
+artifacts/
