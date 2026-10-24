@@ -47,7 +47,15 @@ flutter test
 flutter build web --dart-define=DEMO_MODE=true --dart-define=API_BASE_URL=http://localhost:5080
 ```
 
-Las pruebas cubren validación/interacción de formulario, serialización, encabezados de identidad, errores, doble envío, reintentos y estado del ViewModel. La compilación web permite revisar la interfaz mientras se prepara el dispositivo Android. No equivale a validar APK o iOS; Android requiere licencias SDK aceptadas y teléfono/emulador, e iOS requiere macOS/Xcode.
+Las pruebas cubren validación/interacción de formulario, serialización, encabezados de identidad, errores, doble envío, reintentos y estado del ViewModel. Se verificaron compilaciones web y APK debug; este último se genera en `build/app/outputs/flutter-apk/app-debug.apk` y no se versiona. Falta instalarlo y probarlo en un teléfono/emulador. iOS requiere macOS/Xcode y no se ha compilado.
+
+Para generar el APK local de demostración:
+
+```powershell
+flutter build apk --debug --dart-define=API_BASE_URL=http://10.0.2.2:5080 --dart-define=DEMO_MODE=true
+```
+
+Ese APK apunta al equipo anfitrión de Android Emulator. Para teléfono físico, reemplazar la URL por la IP LAN del servidor antes de compilar.
 
 ## Arquitectura
 
