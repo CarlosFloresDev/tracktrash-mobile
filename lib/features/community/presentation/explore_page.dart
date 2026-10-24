@@ -162,17 +162,16 @@ class _ExplorePageState extends ConsumerState<ExplorePage> {
                                   )
                                   .toList(),
                             ),
-                            RichAttributionWidget(
-                              attributions: [
-                                TextSourceAttribution(
-                                  'OpenStreetMap contributors',
-                                  onTap: () => launchUrl(
-                                    Uri.parse(
-                                      'https://www.openstreetmap.org/copyright',
-                                    ),
-                                  ),
+                            SimpleAttributionWidget(
+                              source: const Text(
+                                'OpenStreetMap contributors',
+                                style: TextStyle(fontSize: 10),
+                              ),
+                              onTap: () => launchUrl(
+                                Uri.parse(
+                                  'https://www.openstreetmap.org/copyright',
                                 ),
-                              ],
+                              ),
                             ),
                           ],
                         ),
