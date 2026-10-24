@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'public_map_cache.dart';
 import '../../../core/api_failure.dart';
 import '../domain/community_models.dart';
 
@@ -48,9 +48,11 @@ class ApiCommunityRepository implements CommunityRepository {
         });
   @override
   Future<void> reportPass(String id) => _post('rutas/$id/paso');
-  ApiCommunityRepository(this._dio, this._token);
+  ApiCommunityRepository(this._dio, this._token, {PublicMapCache? mapCache})
+    : _mapCache = mapCache ?? const SharedPreferencesMapCache();
   final Dio _dio;
   final String _token;
+  final PublicMapCache _mapCache;
   Options get _options => Options(headers: {'Authorization': 'Bearer $_token'});
   Future<T> _request<T>(Future<T> Function() action) async {
     if (_token.isEmpty) throw const ApiFailure('Inicia sesión para continuar.');
@@ -83,20 +85,19 @@ class ApiCommunityRepository implements CommunityRepository {
     double lat = -16.3988,
     double lng = -71.5369,
   }) async {
-    final cache = SharedPreferencesAsync();
     final key =
-        'public-map-${lat.toStringAsFixed(3)}-${lng.toStringAsFixed(3)}';
+        'public-map-${Uri.encodeComponent(_dio.options.baseUrl)}-${lat.toStringAsFixed(3)}-${lng.toStringAsFixed(3)}';
     try {
       final json = await _get('mapa?lat=$lat&lng=$lng&radioKm=10');
       try {
-        await cache.setString(key, jsonEncode(json));
+        await _mapCache.write(key, jsonEncode(json));
       } catch (_) {
         /* El mapa no depende de poder escribir la caché. */
       }
       return CommunityMap.fromJson(json);
     } on ApiFailure {
       try {
-        final stored = await cache.getString(key);
+        final stored = await _mapCache.read(key);
         if (stored != null) {
           return CommunityMap.fromJson(
             jsonDecode(stored) as Map<String, dynamic>,
