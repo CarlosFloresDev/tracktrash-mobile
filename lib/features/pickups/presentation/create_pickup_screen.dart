@@ -37,7 +37,8 @@ class _CreatePickupScreenState extends ConsumerState<CreatePickupScreen> {
       canPop: !state.saving,
       child: Scaffold(
         appBar: AppBar(title: const Text('Solicitar un recojo')),
-        body: Center(
+        body: Align(
+          alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
             child: SingleChildScrollView(

@@ -17,6 +17,7 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   go_router: ^17.5.0
   uuid: ^4.6.0
+  cupertino_icons: ^1.0.9
 
 dev_dependencies:
   flutter_test:
