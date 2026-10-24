@@ -48,7 +48,7 @@ class _ImpactPageState extends ConsumerState<ImpactPage> {
                       '$points puntos',
                       style: Theme.of(context).textTheme.headlineLarge,
                     ),
-                    const Text('20 puntos por entrega confirmada.'),
+                    const Text('20 puntos por entrega · máximo 200 al día.'),
                   ],
                 ),
               ),
@@ -66,6 +66,22 @@ class _ImpactPageState extends ConsumerState<ImpactPage> {
             child: Text(
               actions.error!,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+        if (ref.watch(profileProvider).valueOrNull case final profile?)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Card(
+              child: ListTile(
+                leading: const Icon(
+                  Icons.local_fire_department_outlined,
+                  color: EcoColors.green,
+                ),
+                title: Text('${profile.streak} días de racha'),
+                subtitle: Text(
+                  'Tu mejor racha: ${profile.bestStreak} días con entregas confirmadas.',
+                ),
+              ),
             ),
           ),
         const SectionTitle('Beneficios para seguir sumando'),
@@ -171,6 +187,36 @@ class _ImpactPageState extends ConsumerState<ImpactPage> {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SectionTitle('Historial de puntos'),
+        AsyncContent(
+          value: ref.watch(movementsProvider),
+          onRetry: () => ref.invalidate(movementsProvider),
+          builder: (items) => Column(
+            children: [
+              if (items.isEmpty)
+                const EcoEmpty(
+                  title: 'Tus primeras acciones están por venir',
+                  message: 'Aquí verás los puntos obtenidos y utilizados.',
+                ),
+              ...items.map(
+                (m) => Card(
+                  child: ListTile(
+                    leading: Icon(
+                      (m['puntos'] as int) > 0
+                          ? Icons.add_circle_outline
+                          : Icons.remove_circle_outline,
+                      color: EcoColors.green,
+                    ),
+                    title: Text(m['motivo'] as String),
+                    trailing: Text(
+                      '${(m['puntos'] as int) > 0 ? '+' : ''}${m['puntos']} pts',
                     ),
                   ),
                 ),

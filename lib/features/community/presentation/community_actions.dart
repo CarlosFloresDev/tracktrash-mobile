@@ -4,6 +4,9 @@ import '../data/community_repository.dart';
 import '../domain/community_models.dart';
 
 class CommunityActions extends ChangeNotifier {
+  Future<bool> reportLevel(String id, int percentage) =>
+      _run(() => _repo.reportLevel(id, percentage));
+  Future<List<Map<String, dynamic>>> history(String id) => _repo.history(id);
   Future<bool> subscribe(String id, bool enabled) =>
       _run(() => _repo.subscribe(id, enabled));
   Future<bool> reportPass(String id) => _run(() => _repo.reportPass(id));

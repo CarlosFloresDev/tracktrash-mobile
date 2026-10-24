@@ -55,7 +55,8 @@ class SessionController extends ChangeNotifier {
     if (!AppConfig.demoMode || _busy) return;
     _busy = true;
     _error = null;
-    notifyListeners();
+    final generation = ++_generation;
+    _notify();
     final token = role == 'admin'
         ? 'demo-admin'
         : role == 'reciclador'
@@ -66,12 +67,17 @@ class SessionController extends ChangeNotifier {
         '/api/v1/perfil',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      _session = UserSession(token: token, role: result.data!['rol'] as String);
+      if (!_disposed && generation == _generation) {
+        _session = UserSession(
+          token: token,
+          role: result.data!['rol'] as String,
+        );
+      }
     } on DioException catch (e) {
       _error = ApiFailure.fromDio(e).message;
     } finally {
       _busy = false;
-      notifyListeners();
+      _notify();
     }
   }
 
@@ -79,7 +85,7 @@ class SessionController extends ChangeNotifier {
     _generation++;
     _session = null;
     _error = null;
-    notifyListeners();
+    _notify();
     if (_auth != null) {
       unawaited(_auth.auth.signOut().catchError((Object _) {}));
     }
