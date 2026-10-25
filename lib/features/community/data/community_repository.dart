@@ -7,8 +7,8 @@ import '../domain/community_models.dart';
 abstract interface class CommunityRepository {
   Future<void> reportLevel(String id, int percentage);
   Future<List<Map<String, dynamic>>> movements();
-  Future<List<Map<String, dynamic>>> routes();
-  Future<void> subscribe(String id, bool enabled);
+  Future<List<RouteSchedule>> routes();
+  Future<void> subscribe(String id, bool enabled, {int minutesBefore = 20});
   Future<void> reportPass(String id);
   Future<CommunityMap> map({double lat = -16.3988, double lng = -71.5369});
   Future<CommunityProfile> profile();
@@ -36,10 +36,12 @@ class ApiCommunityRepository implements CommunityRepository {
   @override
   Future<List<Map<String, dynamic>>> movements() => _list('perfil/movimientos');
   @override
-  Future<List<Map<String, dynamic>>> routes() => _list('rutas');
+  Future<List<RouteSchedule>> routes() async =>
+      (await _list('rutas')).map(RouteSchedule.fromJson).toList();
   @override
-  Future<void> subscribe(String id, bool enabled) => enabled
-      ? _post('rutas/$id/suscripcion', {'minutosAntes': 20})
+  Future<void> subscribe(String id, bool enabled, {int minutesBefore = 20}) =>
+      enabled
+      ? _post('rutas/$id/suscripcion', {'minutosAntes': minutesBefore})
       : _request(() async {
           await _dio.delete<dynamic>(
             '/api/v1/rutas/$id/suscripcion',
