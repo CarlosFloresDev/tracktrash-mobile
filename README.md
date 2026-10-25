@@ -11,6 +11,7 @@ Flutter para conectar vecinos y recicladores de Arequipa. [Backend C# separado](
 - Recojos con asignación cercana, aceptación, viaje, código privado, cancelación e historial.
 - Puntos, rachas, beneficios con stock/canje y movimientos propios. Cantidades estimadas, sin atribuir CO2.
 - Perfil, incidencias, bandeja de avisos, horarios y recordatorios por suscripción.
+- Avisos internos configurables por categoría, pausa global sin perder la selección y antelación editable por ruta (5–60 minutos, 20 por defecto). Cambiar una ruta suscrita requiere guardar la nueva anticipación.
 - Acceso demo vecino/reciclador/operador y panel operativo adaptable a web.
 - Integración de registro/login Supabase, renovación y almacenamiento seguro; falta probar credenciales y configuración del proyecto real.
 
@@ -51,9 +52,11 @@ flutter build web --dart-define=DEMO_MODE=true --dart-define=API_BASE_URL=http:/
 flutter build apk --debug --dart-define=DEMO_MODE=true --dart-define=API_BASE_URL=http://10.0.2.2:5080
 ```
 
-19 pruebas aprobadas: formulario, red/identidad, reintentos, doble envío, ciclo del ViewModel, caché pública y su falla/recuperación, almacenamiento seguro y serialización. Web y APK debug compilados; APK en `build/app/outputs/flutter-apk/app-debug.apk`, ignorado por Git. Apunta a Android Emulator; recompilar con IP LAN para teléfono físico. Falta instalar/probar en Android e iOS; iOS requiere macOS/Xcode y no se compiló en Windows.
+24 pruebas aprobadas: formulario, red/identidad, reintentos, doble envío, ciclo del ViewModel, caché pública y su falla/recuperación, almacenamiento seguro, serialización y preferencias/antelación. Web y APK debug compilados; APK en `build/app/outputs/flutter-apk/app-debug.apk`, ignorado por Git. Apunta a Android Emulator; recompilar con IP LAN para teléfono físico. Falta instalar/probar en Android e iOS; iOS requiere macOS/Xcode y no se compiló en Windows.
 
 `tools/smoke_web.py` ofrece un recorrido real con Playwright/Edge contra API demo y web local. Crea datos de prueba sin borrar recojos existentes. Dependencia opcional de QA: Python + paquete playwright. Capturas en [docs/screenshots](docs/screenshots).
+
+`tools/smoke_preferences_web.py` comprueba guardado de preferencias y anticipación desde la UI; restaura el perfil y la suscripción originales. Admite `TRACKTRASH_WEB_URL`/`TRACKTRASH_API_URL` si los puertos habituales están ocupados. [Evidencia de este incremento](docs/VALIDACION_AVISOS.md). Aplicar migración y desplegar la API nuevas antes de este cliente; la API anterior no aplica las nuevas opciones.
 
 Iconos reproducibles: `dart run flutter_launcher_icons`. [Procedencia y prompt de la ilustración](assets/README.md). Imágenes generadas con herramienta imagegen y usadas como recurso local, sin llamadas a IA en la app.
 
