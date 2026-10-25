@@ -7,8 +7,8 @@ class CommunityActions extends ChangeNotifier {
   Future<bool> reportLevel(String id, int percentage) =>
       _run(() => _repo.reportLevel(id, percentage));
   Future<List<Map<String, dynamic>>> history(String id) => _repo.history(id);
-  Future<bool> subscribe(String id, bool enabled) =>
-      _run(() => _repo.subscribe(id, enabled));
+  Future<bool> subscribe(String id, bool enabled, {int minutesBefore = 20}) =>
+      _run(() => _repo.subscribe(id, enabled, minutesBefore: minutesBefore));
   Future<bool> reportPass(String id) => _run(() => _repo.reportPass(id));
   CommunityActions(this._repo, this._onChanged);
   final CommunityRepository _repo;

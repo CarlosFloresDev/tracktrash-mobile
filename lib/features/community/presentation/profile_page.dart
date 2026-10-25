@@ -6,6 +6,7 @@ import '../../../ui/eco_design.dart';
 import '../../../ui/async_content.dart';
 import '../domain/community_models.dart';
 import 'community_providers.dart';
+import 'notification_preferences_fields.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -48,6 +49,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
   final _form = GlobalKey<FormState>();
   late final TextEditingController _name, _phone, _address;
   late bool _alerts;
+  late NotificationPreferences _preferences;
   double? _lat, _lng;
   @override
   void initState() {
@@ -56,6 +58,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
     _phone = TextEditingController(text: widget.profile.phone);
     _address = TextEditingController(text: widget.profile.address);
     _alerts = widget.profile.alerts;
+    _preferences = widget.profile.notificationPreferences;
     _lat = widget.profile.lat;
     _lng = widget.profile.lng;
   }
@@ -118,14 +121,12 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
                   : 'Ubicación guardada · actualizar',
             ),
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Recordatorios de horarios'),
-            subtitle: const Text(
-              'Guarda tu preferencia para avisos de recojos y reportes.',
-            ),
-            value: _alerts,
-            onChanged: actions.busy ? null : (v) => setState(() => _alerts = v),
+          NotificationPreferencesFields(
+            enabled: _alerts,
+            preferences: _preferences,
+            busy: actions.busy,
+            onEnabledChanged: (v) => setState(() => _alerts = v),
+            onPreferencesChanged: (v) => setState(() => _preferences = v),
           ),
           if (actions.error != null)
             Text(
@@ -144,6 +145,7 @@ class _ProfileFormState extends ConsumerState<_ProfileForm> {
                         phone: _phone.text.trim(),
                         address: _address.text.trim(),
                         alerts: _alerts,
+                        notificationPreferences: _preferences,
                         lat: _lat,
                         lng: _lng,
                       ),

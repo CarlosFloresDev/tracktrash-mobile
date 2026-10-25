@@ -60,6 +60,41 @@ class CommunityMap {
 }
 
 @immutable
+class NotificationPreferences {
+  const NotificationPreferences({
+    this.schedules = true,
+    this.pickups = true,
+    this.issues = true,
+    this.rewards = true,
+  });
+  final bool schedules, pickups, issues, rewards;
+  NotificationPreferences copyWith({
+    bool? schedules,
+    bool? pickups,
+    bool? issues,
+    bool? rewards,
+  }) => NotificationPreferences(
+    schedules: schedules ?? this.schedules,
+    pickups: pickups ?? this.pickups,
+    issues: issues ?? this.issues,
+    rewards: rewards ?? this.rewards,
+  );
+  factory NotificationPreferences.fromJson(Map<String, dynamic> j) =>
+      NotificationPreferences(
+        schedules: j['horarios'] as bool? ?? true,
+        pickups: j['recojos'] as bool? ?? true,
+        issues: j['incidencias'] as bool? ?? true,
+        rewards: j['recompensas'] as bool? ?? true,
+      );
+  Map<String, dynamic> toJson() => {
+    'horarios': schedules,
+    'recojos': pickups,
+    'incidencias': issues,
+    'recompensas': rewards,
+  };
+}
+
+@immutable
 class CommunityProfile {
   const CommunityProfile({
     required this.name,
@@ -70,11 +105,13 @@ class CommunityProfile {
     this.lng,
     this.streak = 0,
     this.bestStreak = 0,
+    this.notificationPreferences = const NotificationPreferences(),
   });
   final String name, phone, address;
   final bool alerts;
   final double? lat, lng;
   final int streak, bestStreak;
+  final NotificationPreferences notificationPreferences;
   factory CommunityProfile.fromJson(Map<String, dynamic> j) => CommunityProfile(
     name: j['nombre'] as String,
     phone: j['telefono'] as String,
@@ -84,6 +121,9 @@ class CommunityProfile {
     lng: (j['longitud'] as num?)?.toDouble(),
     streak: j['rachaActual'] as int? ?? 0,
     bestStreak: j['rachaMaxima'] as int? ?? 0,
+    notificationPreferences: NotificationPreferences.fromJson(
+      j['preferenciasAvisos'] as Map<String, dynamic>? ?? {},
+    ),
   );
   Map<String, dynamic> toJson() => {
     'nombre': name,
@@ -92,7 +132,34 @@ class CommunityProfile {
     'recibirAvisos': alerts,
     'latitud': lat,
     'longitud': lng,
+    'preferenciasAvisos': notificationPreferences.toJson(),
   };
+}
+
+@immutable
+class RouteSchedule {
+  const RouteSchedule({
+    required this.id,
+    required this.name,
+    required this.zone,
+    required this.nextPass,
+    required this.demo,
+    required this.subscribed,
+    this.minutesBefore,
+  });
+  final String id, name, zone;
+  final DateTime nextPass;
+  final bool demo, subscribed;
+  final int? minutesBefore;
+  factory RouteSchedule.fromJson(Map<String, dynamic> j) => RouteSchedule(
+    id: j['id'] as String,
+    name: j['nombre'] as String,
+    zone: j['zona'] as String,
+    nextPass: DateTime.parse(j['proximoPaso'] as String).toLocal(),
+    demo: j['demostracion'] as bool,
+    subscribed: j['suscrito'] as bool,
+    minutesBefore: j['minutosAntes'] as int?,
+  );
 }
 
 @immutable
