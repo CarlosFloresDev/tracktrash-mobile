@@ -11,7 +11,7 @@ final dioProvider = Provider<Dio>((ref) {
     BaseOptions(
       baseUrl: AppConfig.apiUrl,
       connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: AppConfig.apiTimeoutSeconds),
     ),
   );
   ref.onDispose(dio.close);
