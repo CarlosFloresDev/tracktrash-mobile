@@ -1,0 +1,15 @@
+title = "TrackTrash mobile"
+
+[extend]
+useDefault = true
+
+# Supabase explicitly permits publishable keys in client source code.
+# Keep scanning this file for every other credential and privileged key.
+# https://supabase.com/docs/guides/getting-started/api-keys
+[[allowlists]]
+description = "Only the public Supabase client key in the pilot configuration"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^config/pilot\.public\.json$''']
+regexTarget = "secret"
+regexes = ['''^sb_publishable_[A-Za-z0-9_-]+$''']
