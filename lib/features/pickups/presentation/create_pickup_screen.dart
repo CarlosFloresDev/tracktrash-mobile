@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import 'package:geolocator/geolocator.dart';
+import '../../../core/config.dart';
 import '../../../app/providers.dart';
 import '../domain/pickup.dart';
 
@@ -19,6 +21,8 @@ class _CreatePickupScreenState extends ConsumerState<CreatePickupScreen> {
   RecyclableMaterial _material = RecyclableMaterial.paper;
   DateTime _scheduledAt = DateTime.now().add(const Duration(days: 1));
   String _requestKey = const Uuid().v4();
+  double? _lat, _lng;
+  bool _autoAssign = false;
 
   void _edited() => _requestKey = const Uuid().v4();
 
@@ -137,6 +141,43 @@ class _CreatePickupScreenState extends ConsumerState<CreatePickupScreen> {
                           ),
                         ),
                       ),
+                    const SizedBox(height: 14),
+                    OutlinedButton.icon(
+                      onPressed: state.saving ? null : _location,
+                      icon: const Icon(Icons.my_location),
+                      label: Text(
+                        _lat == null
+                            ? 'Añadir ubicación del recojo'
+                            : 'Ubicación del recojo añadida',
+                      ),
+                    ),
+                    if (AppConfig.demoMode)
+                      TextButton(
+                        onPressed: state.saving
+                            ? null
+                            : () {
+                                _edited();
+                                setState(() {
+                                  _lat = -16.3988;
+                                  _lng = -71.5369;
+                                });
+                              },
+                        child: const Text('Usar punto de prueba de Arequipa'),
+                      ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Asignar aliado cercano'),
+                      subtitle: const Text(
+                        'Busca una asociación elegible por material, distancia y capacidad. Requiere ubicación.',
+                      ),
+                      value: _autoAssign,
+                      onChanged: state.saving
+                          ? null
+                          : (v) {
+                              _edited();
+                              setState(() => _autoAssign = v);
+                            },
+                    ),
                     const SizedBox(height: 28),
                     FilledButton.icon(
                       key: const Key('submit-pickup'),
@@ -190,6 +231,14 @@ class _CreatePickupScreenState extends ConsumerState<CreatePickupScreen> {
 
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
+    if (_autoAssign && _lat == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Añade la ubicación para buscar un aliado cercano.'),
+        ),
+      );
+      return;
+    }
     if (!_scheduledAt.isAfter(DateTime.now())) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Elige una fecha y hora futuras.')),
@@ -205,6 +254,9 @@ class _CreatePickupScreenState extends ConsumerState<CreatePickupScreen> {
             kg: double.parse(_kg.text.replaceAll(',', '.')),
             address: _address.text,
             scheduledAt: _scheduledAt,
+            lat: _lat,
+            lng: _lng,
+            autoAssign: _autoAssign,
           ),
         );
     if (ok && mounted) {
@@ -216,6 +268,41 @@ class _CreatePickupScreenState extends ConsumerState<CreatePickupScreen> {
           ),
         ),
       );
+    }
+  }
+
+  Future<void> _location() async {
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw Exception();
+      }
+      final p = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+      if (mounted) {
+        _edited();
+        setState(() {
+          _lat = p.latitude;
+          _lng = p.longitude;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No obtuvimos tu ubicación. Puedes crear el recojo sin asignación automática.',
+            ),
+          ),
+        );
+      }
     }
   }
 }

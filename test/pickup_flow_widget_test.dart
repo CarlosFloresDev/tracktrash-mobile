@@ -40,6 +40,10 @@ void main() {
   testWidgets(
     'valida el formulario y muestra el recojo persistido por el repositorio',
     (tester) async {
+      tester.view.physicalSize = const Size(430, 1100);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       final repo = FakePickupRepository();
       await tester.pumpWidget(
         ProviderScope(
@@ -50,6 +54,9 @@ void main() {
           child: const TrackTrashApp(),
         ),
       );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.byKey(const Key('new-pickup')), 250);
+      await tester.ensureVisible(find.byKey(const Key('new-pickup')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('new-pickup')));
       await tester.pumpAndSettle();
@@ -72,6 +79,7 @@ void main() {
       expect(repo.createCalls, 1);
       expect(repo.lastDraft!.kg, 2.5);
       expect(find.text('Mis recojos'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Pendiente'), 250);
       expect(find.text('Pendiente'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },

@@ -1,0 +1,7 @@
+{
+  "API_BASE_URL": "https://tracktrash-api.onrender.com",
+  "SUPABASE_URL": "https://owfjolparskdiazhfubr.supabase.co",
+  "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_WXstvalD-Pa3caKkZYhqIw_9dJdCoHw",
+  "DEMO_MODE": "false",
+  "API_TIMEOUT_SECONDS": "90"
+}

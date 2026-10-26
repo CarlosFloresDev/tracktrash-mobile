@@ -1,0 +1,13 @@
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/images/tacho-vivo.png
+  adaptive_icon_background: '#143D2B'
+  adaptive_icon_foreground: assets/images/tacho-vivo.png
+  remove_alpha_ios: true
+  background_color_ios: '#F6F7F2'
+  web:
+    generate: true
+    image_path: assets/images/tacho-vivo.png
+    background_color: '#F6F7F2'
+    theme_color: '#143D2B'
