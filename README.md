@@ -1,5 +1,7 @@
 # TrackTrash Mobile · 0.2
 
+[Guía para compañeros: flujo, imagen y mapa del código](docs/GUIA_FLUJO_CODIGO.md).
+
 Flutter para conectar vecinos y recicladores de Arequipa. [Backend C# separado](https://github.com/CarlosFloresDev/tracktrash-backend). Interfaz en español con identidad Tacho Vivo, ilustración original, iconos nativos, navegación adaptable y animaciones que respetan movimiento reducido.
 
 ![Inicio móvil](docs/screenshots/inicio-mobile.png)
