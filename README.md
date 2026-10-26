@@ -44,7 +44,7 @@ Mapa base OpenStreetMap con atribución y proveedor configurable mediante `MAP_T
 
 ## Validación y compilación
 
-[Piloto web](https://tracktrash.pages.dev), con Supabase real y datos ficticios. [Firma y distribución](docs/DISTRIBUCION_PILOTO.md). La rama actual es `feat/ecosistema-tracktrash`; main conserva el primer incremento. Los comandos locales de abajo corresponden a desarrollo.
+[Piloto web](https://tracktrash.pages.dev), con Supabase real y datos ficticios. [Descargar APK firmado, variantes y validación](docs/DISTRIBUCION_PILOTO.md). La rama actual es `feat/ecosistema-tracktrash`; main conserva el primer incremento. Los comandos locales de abajo corresponden a desarrollo.
 
 ```powershell
 dart format --output=none --set-exit-if-changed lib test
