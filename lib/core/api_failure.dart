@@ -20,7 +20,9 @@ class ApiFailure implements Exception {
         final messages = errors.values
             .expand((value) => value is List ? value : [value])
             .join('\n');
-        if (messages.isNotEmpty) return ApiFailure(messages, statusCode: status);
+        if (messages.isNotEmpty) {
+          return ApiFailure(messages, statusCode: status);
+        }
       }
       final message = data['error'];
       if (message is String && (status ?? 0) < 500) {

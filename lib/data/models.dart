@@ -5,7 +5,8 @@ typedef Json = Map<String, dynamic>;
 
 double _double(Object? value) => (value as num).toDouble();
 double? _doubleOrNull(Object? value) => (value as num?)?.toDouble();
-DateTime _timestamp(Object? value) => DateTime.parse(value! as String).toLocal();
+DateTime _timestamp(Object? value) =>
+    DateTime.parse(value! as String).toLocal();
 DateTime? _timestampOrNull(Object? value) =>
     value == null ? null : _timestamp(value);
 
@@ -103,9 +104,8 @@ class CollectRequest {
   final RequestStatus status;
   final String? observations;
 
-  String get timeLabel => scheduledTime.length >= 5
-      ? scheduledTime.substring(0, 5)
-      : scheduledTime;
+  String get timeLabel =>
+      scheduledTime.length >= 5 ? scheduledTime.substring(0, 5) : scheduledTime;
 
   factory CollectRequest.fromJson(Json json) => CollectRequest(
     id: json['collectRequestId'] as int,

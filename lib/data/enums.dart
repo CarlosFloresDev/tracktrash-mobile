@@ -51,10 +51,8 @@ enum GathererType {
   final String api;
   final String label;
 
-  static GathererType parse(String value) => values.firstWhere(
-    (type) => type.api == value,
-    orElse: () => independent,
-  );
+  static GathererType parse(String value) =>
+      values.firstWhere((type) => type.api == value, orElse: () => independent);
 }
 
 enum VerificationStatus {
@@ -66,10 +64,8 @@ enum VerificationStatus {
   final String api;
   final String label;
 
-  static VerificationStatus parse(String value) => values.firstWhere(
-    (status) => status.api == value,
-    orElse: () => pending,
-  );
+  static VerificationStatus parse(String value) =>
+      values.firstWhere((status) => status.api == value, orElse: () => pending);
 }
 
 enum MeasurementUnit {
@@ -111,8 +107,6 @@ enum OrganizationType {
   final String api;
   final String label;
 
-  static OrganizationType parse(String value) => values.firstWhere(
-    (type) => type.api == value,
-    orElse: () => other,
-  );
+  static OrganizationType parse(String value) =>
+      values.firstWhere((type) => type.api == value, orElse: () => other);
 }

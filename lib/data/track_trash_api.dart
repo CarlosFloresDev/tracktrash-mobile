@@ -132,9 +132,8 @@ class DioTrackTrashApi implements TrackTrashApi {
       _run(() async => (await _dio.get<Json>('/api/$path')).data!);
 
   Future<List<Json>> _getList(String path) => _run(
-    () async =>
-        ((await _dio.get<List<dynamic>>('/api/$path')).data ?? const [])
-            .cast<Json>(),
+    () async => ((await _dio.get<List<dynamic>>('/api/$path')).data ?? const [])
+        .cast<Json>(),
   );
 
   Future<T?> _getOrNull<T>(String path, T Function(Json) parse) async {
@@ -147,8 +146,8 @@ class DioTrackTrashApi implements TrackTrashApi {
   }
 
   Future<int> _create(String path, Json body) => _run(
-    () async => ((await _dio.post<dynamic>('/api/$path', data: body)).data)
-        as int,
+    () async =>
+        ((await _dio.post<dynamic>('/api/$path', data: body)).data) as int,
   );
 
   Future<void> _send(String method, String path, [Json? body]) => _run(
@@ -164,7 +163,9 @@ class DioTrackTrashApi implements TrackTrashApi {
 
   @override
   Future<User> userByEmail(String email) async => User.fromJson(
-    await _getMap('User/email/${Uri.encodeComponent(email.trim().toLowerCase())}'),
+    await _getMap(
+      'User/email/${Uri.encodeComponent(email.trim().toLowerCase())}',
+    ),
   );
 
   @override
@@ -213,11 +214,11 @@ class DioTrackTrashApi implements TrackTrashApi {
   );
 
   @override
-  Future<void> changePassword(int userId, String current, String next) =>
-      _send('PUT', 'User/$userId/password', {
-        'currentPassword': current,
-        'newPassword': next,
-      });
+  Future<void> changePassword(int userId, String current, String next) => _send(
+    'PUT',
+    'User/$userId/password',
+    {'currentPassword': current, 'newPassword': next},
+  );
 
   @override
   Future<int> createLocation({
