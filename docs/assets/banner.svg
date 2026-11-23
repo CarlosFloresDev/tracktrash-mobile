@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" width="1200" height="360" role="img" aria-label="TrackTrash App móvil">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b2619"/>
+      <stop offset="1" stop-color="#1f6444"/>
+    </linearGradient>
+    <linearGradient id="snow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d7f58b"/>
+    </linearGradient>
+    <style>
+      .blob { animation: drift 12s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+      .blob2 { animation: drift 16s ease-in-out infinite reverse; transform-box: fill-box; transform-origin: center; }
+      .route { stroke-dasharray: 2 14; animation: dash 2.4s linear infinite; }
+      .bin { animation: bob 3.2s ease-in-out infinite; }
+      .truck { animation: drive 9s linear infinite; }
+      .fade { animation: fade 1.2s ease-out both; }
+      .fade2 { animation: fade 1.2s .25s ease-out both; }
+      .fade3 { animation: fade 1.2s .5s ease-out both; }
+      @keyframes drift { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(30px,-18px) scale(1.08); } }
+      @keyframes dash { to { stroke-dashoffset: -64; } }
+      @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+      @keyframes drive { from { transform: translateX(-120px); } to { transform: translateX(1320px); } }
+      @keyframes fade { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+      @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+    </style>
+  </defs>
+  <rect width="1200" height="360" rx="24" fill="url(#sky)"/>
+  <circle class="blob" cx="980" cy="70" r="120" fill="#d7f58b" opacity=".12"/>
+  <circle class="blob2" cx="160" cy="320" r="140" fill="#58b98a" opacity=".15"/>
+
+  <!-- El Misti, Chachani -->
+  <path d="M640 300 L860 96 L1080 300Z" fill="#2c9b66" opacity=".55"/>
+  <path d="M860 96 L812 140 L834 138 L850 160 L866 140 L884 162 L900 140 L912 142Z" fill="url(#snow)"/>
+  <path d="M560 300 L700 170 L790 230 L880 160 L1200 300Z" fill="#217a51" opacity=".45"/>
+
+  <!-- Sillar city -->
+  <g fill="#f3ead8" opacity=".9">
+    <rect x="610" y="262" width="60" height="38" rx="3"/><rect x="684" y="248" width="48" height="52" rx="3"/>
+    <rect x="1040" y="252" width="56" height="48" rx="3"/><rect x="1108" y="264" width="62" height="36" rx="3"/>
+  </g>
+  <rect x="0" y="300" width="1200" height="60" rx="0" fill="#0b2619"/>
+  <path class="route" d="M40 300 H1160" stroke="#d7f58b" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Truck -->
+  <g class="truck">
+    <rect x="0" y="272" width="54" height="26" rx="5" fill="#d7f58b"/>
+    <path d="M54 280h18l10 10v8H54z" fill="#58b98a"/>
+    <circle cx="14" cy="300" r="7" fill="#143d2b" stroke="#d7f58b" stroke-width="2"/>
+    <circle cx="66" cy="300" r="7" fill="#143d2b" stroke="#d7f58b" stroke-width="2"/>
+  </g>
+
+  <!-- Bin mascot -->
+  <g transform="translate(930 168)"><g class="bin">
+    <rect x="0" y="22" width="92" height="108" rx="14" fill="#217a51"/>
+    <rect x="-8" y="8" width="108" height="22" rx="9" fill="#2c9b66"/>
+    <rect x="30" y="0" width="32" height="12" rx="5" fill="#2c9b66"/>
+    <rect x="14" y="40" width="64" height="34" rx="9" fill="#0b2619"/>
+    <path d="M28 56q5-6 10 0M54 56q5-6 10 0" stroke="#d7f58b" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M38 64q8 6 16 0" stroke="#d7f58b" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <circle cx="46" cy="102" r="14" fill="#d7f58b" opacity=".9"/>
+    <path d="M40 104l6-9 6 9M43 100h6" stroke="#143d2b" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g></g>
+
+  <!-- Logo + text -->
+  <g transform="translate(64 72)"><g class="fade">
+    <rect width="64" height="64" rx="16" fill="#d7f58b"/>
+    <path fill="#143d2b" d="M32 11c-8.3 0-15 6.4-15 14.4 0 10.1 11.5 19.9 13.8 21.8.700.5 1.7.500 2.4 0C35.5 45.3 47 35.5 47 25.4 47 17.4 40.3 11 32 11z"/>
+    <path fill="#d7f58b" d="M32 35.500c-4.8 0-8.2-3.2-8.2-7.9 0-4 3.1-7.1 8.2-8.4 5.1 1.3 8.2 4.4 8.2 8.4 0 4.7-3.4 7.9-8.2 7.900z"/>
+  </g></g>
+  <text class="fade" x="148" y="124" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="58" font-weight="800" fill="#ffffff">Track<tspan fill="#d7f58b">Trash</tspan></text>
+  <text class="fade2" x="66" y="190" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="30" font-weight="700" fill="#ffffff">App móvil</text>
+  <text class="fade3" x="66" y="230" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="20" fill="#c9e7d4">Recojo y reciclaje coordinado en Arequipa</text>
+</svg>
