@@ -80,6 +80,10 @@ ThemeData ecoTheme() => ThemeData(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     ),
   ),
+  floatingActionButtonTheme: const FloatingActionButtonThemeData(
+    backgroundColor: EcoColors.pine,
+    foregroundColor: Colors.white,
+  ),
   navigationBarTheme: NavigationBarThemeData(
     backgroundColor: Colors.white,
     indicatorColor: EcoColors.lime,
