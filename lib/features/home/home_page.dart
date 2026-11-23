@@ -30,14 +30,11 @@ class HomePage extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
         children: [
-          Text(
-            'Hola, ${user.firstName}',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            session.organization?.businessName ?? user.role.label,
-            style: Theme.of(context).textTheme.bodyMedium,
+          EcoEntrance(
+            child: EcoHeroBanner(
+              title: 'Hola, ${user.firstName}',
+              subtitle: session.organization?.businessName ?? user.role.label,
+            ),
           ),
           const SizedBox(height: 18),
           switch (user.role) {
@@ -102,7 +99,8 @@ class _ResidentHome extends ConsumerWidget {
                     ),
                   )
                 else
-                  for (final item in items.take(4)) RequestTile(request: item),
+                  for (final (i, item) in items.take(4).indexed)
+                    RequestTile(request: item, index: i),
               ],
             );
           },

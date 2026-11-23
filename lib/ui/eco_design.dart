@@ -94,19 +94,146 @@ ThemeData ecoTheme() => ThemeData(
 );
 
 class EcoEntrance extends StatelessWidget {
-  const EcoEntrance({super.key, required this.child});
+  const EcoEntrance({super.key, required this.child, this.index = 0});
   final Widget child;
+
+  /// Position in a list; each step delays the entrance a little to stagger items.
+  final int index;
   @override
-  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
-    tween: Tween(begin: 0, end: 1),
-    duration: MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : const Duration(milliseconds: 420),
-    curve: Curves.easeOutCubic,
-    child: child,
-    builder: (_, v, child) => Opacity(
-      opacity: v,
-      child: Transform.translate(offset: Offset(0, 14 * (1 - v)), child: child),
+  Widget build(BuildContext context) {
+    final delay = (index.clamp(0, 8)) * 60;
+    final total = 420 + delay;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : Duration(milliseconds: total),
+      curve: Interval(delay / total, 1, curve: Curves.easeOutCubic),
+      child: child,
+      builder: (_, v, child) => Opacity(
+        opacity: v,
+        child: Transform.translate(
+          offset: Offset(0, 18 * (1 - v)),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Gentle up-and-down motion for the mascot. Respects reduced motion.
+class EcoFloat extends StatefulWidget {
+  const EcoFloat({super.key, required this.child});
+  final Widget child;
+
+  @override
+  State<EcoFloat> createState() => _EcoFloatState();
+}
+
+class _EcoFloatState extends State<EcoFloat>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 3),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    child: widget.child,
+    builder: (_, child) => Transform.translate(
+      offset: Offset(0, -10 * Curves.easeInOut.transform(_controller.value)),
+      child: child,
+    ),
+  );
+}
+
+/// Brand banner with gradient, used at the top of the home screen.
+class EcoHeroBanner extends StatelessWidget {
+  const EcoHeroBanner({super.key, required this.title, required this.subtitle});
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(28),
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [EcoColors.pine, EcoColors.green],
+      ),
+    ),
+    child: Stack(
+      children: [
+        Positioned(
+          right: -30,
+          top: -30,
+          child: Container(
+            width: 140,
+            height: 140,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: EcoColors.lime.withValues(alpha: .15),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 22, 8, 22),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -.6,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: EcoColors.lime,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              EcoFloat(
+                child: Image.asset(
+                  'assets/images/tacho-vivo.png',
+                  height: 96,
+                  excludeFromSemantics: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     ),
   );
 }

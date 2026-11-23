@@ -43,7 +43,8 @@ class AvailablePage extends ConsumerWidget {
                   )
                 : Column(
                     children: [
-                      for (final item in items) RequestTile(request: item),
+                      for (final (i, item) in items.indexed)
+                        RequestTile(request: item, index: i),
                     ],
                   ),
           ),

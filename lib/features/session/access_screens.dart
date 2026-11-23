@@ -37,10 +37,12 @@ class WelcomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 EcoEntrance(
-                  child: Image.asset(
-                    'assets/images/tacho-vivo.png',
-                    height: 260,
-                    semanticLabel: 'Tacho Vivo sonríe frente al Misti',
+                  child: EcoFloat(
+                    child: Image.asset(
+                      'assets/images/tacho-vivo.png',
+                      height: 260,
+                      semanticLabel: 'Tacho Vivo sonríe frente al Misti',
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -148,6 +150,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       controller: _email,
                       keyboardType: TextInputType.emailAddress,
                       autofillHints: const [AutofillHints.email],
+                      textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(labelText: 'Correo'),
                       validator: (value) =>
                           RegExp(

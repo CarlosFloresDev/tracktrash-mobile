@@ -71,7 +71,8 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
               }
               return Column(
                 children: [
-                  for (final item in visible) RequestTile(request: item),
+                  for (final (i, item) in visible.indexed)
+                    RequestTile(request: item, index: i),
                 ],
               );
             },

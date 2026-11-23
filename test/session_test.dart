@@ -77,6 +77,9 @@ void main() {
       tester.view.physicalSize = const Size(900, 1800);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
+      // Endless decorative animations would keep pumpAndSettle waiting forever.
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
