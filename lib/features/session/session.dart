@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api_failure.dart';
+import '../../data/enums.dart';
 import '../../data/models.dart';
 import '../../data/track_trash_api.dart';
 
