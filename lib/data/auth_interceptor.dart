@@ -47,6 +47,11 @@ class AuthInterceptor extends QueuedInterceptor {
       return handler.next(error);
     }
     final data = response?.data;
+    // The backend also answers 401 for business rules ("Only verified gatherers can apply."):
+    // those carry an `error` message and no `code`, and must not end the session.
+    if (data is Map && data['error'] is String && data['code'] == null) {
+      return handler.next(error);
+    }
     final expired = data is Map && data['code'] == 'ACCESS_TOKEN_EXPIRED';
     final sent = options.headers['Authorization'];
     final current = 'Bearer ${_vault.tokens?.accessToken}';
