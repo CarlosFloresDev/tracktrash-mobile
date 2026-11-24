@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
+import '../../data/enums.dart';
 import '../../data/models.dart';
 
 /// Requests created by the signed-in user.
@@ -11,6 +12,18 @@ final myRequestsProvider = FutureProvider.autoDispose<List<CollectRequest>>((
   final items = await ref.watch(apiProvider).requestsByUser(user.userId);
   return [...items]..sort((a, b) => b.id.compareTo(a.id));
 });
+
+/// Requests shown in "Solicitudes": every request for an admin, otherwise the user's own.
+final visibleRequestsProvider =
+    FutureProvider.autoDispose<List<CollectRequest>>((ref) async {
+      final user = ref.watch(sessionProvider).user;
+      if (user == null) return const [];
+      if (user.role != UserRole.admin) {
+        return ref.watch(myRequestsProvider.future);
+      }
+      final items = await ref.watch(apiProvider).allRequests();
+      return [...items]..sort((a, b) => b.id.compareTo(a.id));
+    });
 
 /// Pending requests the signed-in gatherer can apply to. The backend filters them by the
 /// materials the gatherer accepts and only serves them to verified gatherers.

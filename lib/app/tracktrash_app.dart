@@ -12,6 +12,7 @@ import '../features/requests/request_detail_screen.dart';
 import '../features/requests/requests_page.dart';
 import '../features/session/access_screens.dart';
 import '../ui/eco_design.dart';
+import '../features/admin/admin_pages.dart';
 import 'providers.dart';
 import 'shell.dart';
 
@@ -42,6 +43,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/solicitar',
         builder: (_, _) => const CreateRequestScreen(),
       ),
+      GoRoute(path: '/catalogo', builder: (_, _) => const AdminCatalogScreen()),
       GoRoute(
         path: '/solicitudes/:id',
         builder: (_, state) => RequestDetailScreen(
@@ -63,6 +65,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/servicios', builder: (_, _) => const ServicesPage()),
           GoRoute(path: '/puntos', builder: (_, _) => const PointsPage()),
           GoRoute(path: '/perfil', builder: (_, _) => const ProfilePage()),
+          GoRoute(
+            path: '/recolectores',
+            builder: (_, _) => const AdminGatherersPage(),
+          ),
+          GoRoute(path: '/usuarios', builder: (_, _) => const AdminUsersPage()),
         ],
       ),
     ],

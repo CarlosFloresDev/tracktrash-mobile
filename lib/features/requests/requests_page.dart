@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../ui/async_content.dart';
 import '../../ui/eco_design.dart';
+import '../../app/providers.dart';
+import '../../data/enums.dart';
 import 'request_providers.dart';
 import 'request_tile.dart';
 
@@ -19,19 +21,20 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final requests = ref.watch(myRequestsProvider);
+    final requests = ref.watch(visibleRequestsProvider);
+    final isAdmin = ref.watch(sessionProvider).user?.role == UserRole.admin;
     return RefreshIndicator(
       onRefresh: () async {
         ref
-          ..invalidate(myRequestsProvider)
+          ..invalidate(visibleRequestsProvider)
           ..invalidate(requestDetailsProvider);
-        await ref.read(myRequestsProvider.future);
+        await ref.read(visibleRequestsProvider.future);
       },
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
         children: [
           Text(
-            'Mis solicitudes',
+            isAdmin ? 'Solicitudes' : 'Mis solicitudes',
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: 14),
@@ -47,7 +50,7 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
           const SizedBox(height: 16),
           AsyncContent(
             value: requests,
-            onRetry: () => ref.invalidate(myRequestsProvider),
+            onRetry: () => ref.invalidate(visibleRequestsProvider),
             builder: (items) {
               final visible = items
                   .where((item) => item.status.isActive == _active)
@@ -61,7 +64,7 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
                       ? 'Pide un recojo y sigue su estado desde aquí.'
                       : 'Cuando se complete o cancele un recojo aparecerá en esta lista.',
                   icon: Icons.inventory_2_outlined,
-                  action: _active
+                  action: _active && !isAdmin
                       ? FilledButton(
                           onPressed: () => context.push('/solicitar'),
                           child: const Text('Nueva solicitud'),

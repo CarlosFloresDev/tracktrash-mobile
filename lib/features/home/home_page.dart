@@ -261,10 +261,39 @@ class _AdminHome extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'La gestión de recolectores, usuarios y catálogo está en la versión web.',
-            textAlign: TextAlign.center,
+          const SectionTitle('Administración'),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.verified_user_outlined),
+                  title: const Text('Verificar recolectores'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.go('/recolectores'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.assignment_outlined),
+                  title: const Text('Todas las solicitudes'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.go('/solicitudes'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.category_outlined),
+                  title: const Text('Catálogo de materiales'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.push('/catalogo'),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.recycling_rounded),
+                  title: const Text('Puntos de acopio'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.go('/puntos'),
+                ),
+              ],
+            ),
           ),
         ],
       ),

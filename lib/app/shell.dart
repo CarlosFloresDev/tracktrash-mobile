@@ -42,6 +42,18 @@ const _points = _Destination(
   Icons.recycling_outlined,
   Icons.recycling_rounded,
 );
+const _gatherers = _Destination(
+  '/recolectores',
+  'Recolectores',
+  Icons.verified_user_outlined,
+  Icons.verified_user_rounded,
+);
+const _users = _Destination(
+  '/usuarios',
+  'Usuarios',
+  Icons.group_outlined,
+  Icons.group_rounded,
+);
 const _profile = _Destination(
   '/perfil',
   'Perfil',
@@ -51,7 +63,7 @@ const _profile = _Destination(
 
 List<_Destination> _destinationsFor(UserRole role) => switch (role) {
   UserRole.gatherer => const [_home, _available, _services, _points, _profile],
-  UserRole.admin => const [_home, _points, _profile],
+  UserRole.admin => const [_home, _requests, _gatherers, _users, _profile],
   _ => const [_home, _requests, _points, _profile],
 };
 
