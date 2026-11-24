@@ -90,15 +90,16 @@ void main() {
 
       // An administrator verifies the gatherer (web-only feature in the app).
       await admin.signIn(adminEmail, adminPassword);
-      await admin.dio.put<dynamic>(
-        '/api/Gatherer/${profile.gathererId}',
-        data: {
-          'gathererId': profile.gathererId,
-          'gathererTypeId': profile.type.api,
-          'verificationDocument': profile.verificationDocument,
-          'verificationStatusId': 'Verified',
-          'isActive': true,
-        },
+      final toVerify = (await admin.api.gatherers()).firstWhere(
+        (g) => g.gathererId == profile.gathererId,
+      );
+      await admin.api.updateGatherer(
+        toVerify,
+        verification: VerificationStatus.verified,
+      );
+      expect(
+        (await admin.api.users()).map((u) => u.email),
+        contains(gathererEmail),
       );
 
       final catalog = (await household.api.residueTypes())
@@ -123,6 +124,11 @@ void main() {
         ],
       );
       expect(await household.api.detailsOf(requestId), hasLength(1));
+
+      expect(
+        (await admin.api.allRequests()).map((r) => r.id),
+        contains(requestId),
+      );
 
       final compatible = await household.api.gatherersFor(requestId);
       expect(compatible.map((g) => g.gathererId), contains(profile.gathererId));
