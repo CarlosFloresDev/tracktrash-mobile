@@ -73,7 +73,10 @@ void main() {
         ..._full,
         'pickupService': null,
         'details': [
-          {...(_full['details'] as List).first as Map<String, dynamic>, 'estimatedQuantity': 6},
+          {
+            ...(_full['details'] as List).first as Map<String, dynamic>,
+            'estimatedQuantity': 6,
+          },
         ],
       };
       final full = CollectRequestFull.fromJson(json);
@@ -100,7 +103,10 @@ void main() {
 
   group('status rules', () {
     test('mirror the backend transitions', () {
-      expect(RequestStatus.pending.next, [RequestStatus.assigned, RequestStatus.cancelled]);
+      expect(RequestStatus.pending.next, [
+        RequestStatus.assigned,
+        RequestStatus.cancelled,
+      ]);
       expect(RequestStatus.inProgress.next, contains(RequestStatus.completed));
       expect(RequestStatus.completed.next, isEmpty);
       expect(RequestStatus.cancelled.isFinal, isTrue);
@@ -116,11 +122,17 @@ void main() {
   group('ApiFailure', () {
     DioException failure(int status, Object? data) => DioException(
       requestOptions: RequestOptions(path: '/x'),
-      response: Response(requestOptions: RequestOptions(path: '/x'), statusCode: status, data: data),
+      response: Response(
+        requestOptions: RequestOptions(path: '/x'),
+        statusCode: status,
+        data: data,
+      ),
     );
 
     test('reads the { error } shape', () {
-      final result = ApiFailure.fromDio(failure(400, {'error': 'Email is already registered.'}));
+      final result = ApiFailure.fromDio(
+        failure(400, {'error': 'Email is already registered.'}),
+      );
       expect(result.message, 'Email is already registered.');
       expect(result.statusCode, 400);
     });
@@ -138,12 +150,16 @@ void main() {
     });
 
     test('hides server error details on 5xx', () {
-      final result = ApiFailure.fromDio(failure(500, {'error': 'An unexpected error occurred.'}));
+      final result = ApiFailure.fromDio(
+        failure(500, {'error': 'An unexpected error occurred.'}),
+      );
       expect(result.message, contains('servidor'));
     });
 
     test('reports connectivity problems without a response', () {
-      final result = ApiFailure.fromDio(DioException(requestOptions: RequestOptions(path: '/x')));
+      final result = ApiFailure.fromDio(
+        DioException(requestOptions: RequestOptions(path: '/x')),
+      );
       expect(result.message, contains('conectar'));
     });
   });
@@ -154,12 +170,22 @@ void main() {
       dio.interceptors.add(
         InterceptorsWrapper(
           onRequest: (options, handler) => status < 400
-              ? handler.resolve(Response(requestOptions: options, statusCode: status, data: data))
+              ? handler.resolve(
+                  Response(
+                    requestOptions: options,
+                    statusCode: status,
+                    data: data,
+                  ),
+                )
               : handler.reject(
                   DioException(
                     requestOptions: options,
                     type: DioExceptionType.badResponse,
-                    response: Response(requestOptions: options, statusCode: status, data: data),
+                    response: Response(
+                      requestOptions: options,
+                      statusCode: status,
+                      data: data,
+                    ),
                   ),
                 ),
         ),
@@ -168,7 +194,9 @@ void main() {
     }
 
     test('a missing profile is null, not an error', () async {
-      final api = DioTrackTrashApi(dioReturning(404, {'error': 'Gatherer not found.'}));
+      final api = DioTrackTrashApi(
+        dioReturning(404, {'error': 'Gatherer not found.'}),
+      );
       expect(await api.gathererByUser(99), isNull);
     });
 

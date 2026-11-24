@@ -4,69 +4,93 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:tracktrash_mobile/app/providers.dart';
 import 'package:tracktrash_mobile/app/tracktrash_app.dart';
+import 'package:tracktrash_mobile/data/auth_tokens.dart';
 import 'package:tracktrash_mobile/data/enums.dart';
+import 'package:tracktrash_mobile/data/models.dart';
 import 'package:tracktrash_mobile/features/session/session.dart';
 
 import 'support/fakes.dart';
 
-SessionController buildSession(FakeApi api, [MemorySessionStorage? storage]) =>
-    SessionController(
-      api: api,
-      gateway: ProvisionalAuthGateway(api),
-      storage: storage ?? MemorySessionStorage(),
-    );
+const password = 'secreto123';
+
+({SessionController session, FakeApi api, MemorySessionStorage storage})
+buildSession(List<(User, String)> accounts, {MemorySessionStorage? storage}) {
+  final store = storage ?? MemorySessionStorage();
+  final api = FakeApi(accounts: accounts, vault: TokenVault(store));
+  return (
+    session: SessionController(api: api, vault: api.vault),
+    api: api,
+    storage: store,
+  );
+}
 
 void main() {
   group('SessionController', () {
-    test('signs in by e-mail and remembers the user', () async {
-      final storage = MemorySessionStorage();
-      final session = buildSession(FakeApi(users: [fakeUser()]), storage);
-      expect(await session.signIn('  LUCIA@correo.pe ', 'anything'), isTrue);
-      expect(session.isSignedIn, isTrue);
-      expect(storage.userId, 1);
+    test('signs in with e-mail and password and stores the tokens', () async {
+      final s = buildSession([(fakeUser(), password)]);
+      expect(await s.session.signIn('  LUCIA@correo.pe ', password), isTrue);
+      expect(s.session.isSignedIn, isTrue);
+      expect(s.storage.tokens?.accessToken, 'token-1');
     });
 
-    test('reports an unknown account without crashing', () async {
-      final session = buildSession(FakeApi());
-      expect(await session.signIn('nadie@correo.pe', 'x'), isFalse);
-      expect(session.error, 'No encontramos una cuenta con ese correo.');
-      expect(session.isSignedIn, isFalse);
+    test('rejects a wrong password', () async {
+      final s = buildSession([(fakeUser(), password)]);
+      expect(await s.session.signIn('lucia@correo.pe', 'otra'), isFalse);
+      expect(
+        s.session.error,
+        'Correo o contraseña incorrectos, o cuenta desactivada.',
+      );
+      expect(s.session.isSignedIn, isFalse);
+      expect(s.storage.tokens, isNull);
     });
 
     test('rejects deactivated accounts', () async {
-      final session = buildSession(FakeApi(users: [fakeUser(active: false)]));
-      expect(await session.signIn('lucia@correo.pe', 'x'), isFalse);
-      expect(session.error, 'Esta cuenta está desactivada.');
+      final s = buildSession([(fakeUser(active: false), password)]);
+      expect(await s.session.signIn('lucia@correo.pe', password), isFalse);
+      expect(s.session.isSignedIn, isFalse);
     });
 
     test('loads the gatherer profile for gatherer accounts', () async {
-      final api = FakeApi(users: [fakeUser(role: UserRole.gatherer)]);
-      final session = buildSession(api);
-      await session.signIn('lucia@correo.pe', 'x');
-      expect(session.gatherer, isNull);
-      expect(session.user?.role, UserRole.gatherer);
+      final s = buildSession([(fakeUser(role: UserRole.gatherer), password)]);
+      await s.session.signIn('lucia@correo.pe', password);
+      expect(s.session.gatherer, isNull);
+      expect(s.session.user?.role, UserRole.gatherer);
     });
 
-    test('restores a stored session and clears it when the user is gone', () async {
-      final ok = buildSession(FakeApi(users: [fakeUser()]), MemorySessionStorage(1));
-      await ok.restore();
-      expect(ok.isSignedIn, isTrue);
-      expect(ok.restoring, isFalse);
+    test('restores stored tokens and drops rejected ones', () async {
+      final ok = buildSession([
+        (fakeUser(), password),
+      ], storage: MemorySessionStorage(fakeTokens('old')));
+      ok.api.issue('old', fakeUser());
+      await ok.session.restore();
+      expect(ok.session.isSignedIn, isTrue);
+      expect(ok.session.restoring, isFalse);
 
-      final storage = MemorySessionStorage(42);
-      final gone = buildSession(FakeApi(), storage);
-      await gone.restore();
-      expect(gone.isSignedIn, isFalse);
-      expect(storage.userId, isNull);
+      final gone = buildSession(
+        const [],
+        storage: MemorySessionStorage(fakeTokens('revoked')),
+      );
+      await gone.session.restore();
+      expect(gone.session.isSignedIn, isFalse);
+      expect(gone.storage.tokens, isNull);
     });
 
-    test('sign out clears state and storage', () async {
-      final storage = MemorySessionStorage();
-      final session = buildSession(FakeApi(users: [fakeUser()]), storage);
-      await session.signIn('lucia@correo.pe', 'x');
-      await session.signOut();
-      expect(session.isSignedIn, isFalse);
-      expect(storage.userId, isNull);
+    test('sign out revokes the refresh token and clears storage', () async {
+      final s = buildSession([(fakeUser(), password)]);
+      await s.session.signIn('lucia@correo.pe', password);
+      await s.session.signOut();
+      expect(s.session.isSignedIn, isFalse);
+      expect(s.storage.tokens, isNull);
+      expect(s.api.revoked, ['refresh-token-1']);
+    });
+
+    test('an expired session signs the user out with a message', () async {
+      final s = buildSession([(fakeUser(), password)]);
+      await s.session.signIn('lucia@correo.pe', password);
+      await s.api.vault.expire();
+      await Future<void>.delayed(Duration.zero);
+      expect(s.session.isSignedIn, isFalse);
+      expect(s.session.error, 'Tu sesión expiró. Vuelve a ingresar.');
     });
   });
 
@@ -78,13 +102,16 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       // Endless decorative animations would keep pumpAndSettle waiting forever.
-      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
-      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             apiProvider.overrideWithValue(api),
-            sessionStorageProvider.overrideWithValue(MemorySessionStorage()),
+            tokenVaultProvider.overrideWithValue(api.vault),
           ],
           child: const TrackTrashApp(),
         ),
@@ -98,11 +125,11 @@ void main() {
       expect(find.text('Crear mi cuenta'), findsOneWidget);
     });
 
-    testWidgets('login validates input and warns about provisional access', (tester) async {
+    testWidgets('login validates input', (tester) async {
       await pumpApp(tester, FakeApi());
       await tester.tap(find.text('Iniciar sesión'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Acceso provisional'), findsOneWidget);
+      expect(find.textContaining('Acceso provisional'), findsNothing);
 
       await tester.tap(find.widgetWithText(FilledButton, 'Ingresar'));
       await tester.pumpAndSettle();
@@ -110,15 +137,26 @@ void main() {
       expect(find.text('Ingresa tu contraseña'), findsOneWidget);
     });
 
-    testWidgets('an unknown e-mail shows the error from the session', (tester) async {
+    testWidgets('wrong credentials show the error from the session', (
+      tester,
+    ) async {
       await pumpApp(tester, FakeApi());
       await tester.tap(find.text('Iniciar sesión'));
       await tester.pumpAndSettle();
-      await tester.enterText(find.widgetWithText(TextFormField, 'Correo'), 'nadie@correo.pe');
-      await tester.enterText(find.widgetWithText(TextFormField, 'Contraseña'), 'secreto');
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Correo'),
+        'nadie@correo.pe',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Contraseña'),
+        'secreto',
+      );
       await tester.tap(find.widgetWithText(FilledButton, 'Ingresar'));
       await tester.pumpAndSettle();
-      expect(find.text('No encontramos una cuenta con ese correo.'), findsOneWidget);
+      expect(
+        find.text('Correo o contraseña incorrectos, o cuenta desactivada.'),
+        findsOneWidget,
+      );
     });
   });
 }
