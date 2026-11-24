@@ -32,8 +32,12 @@ abstract interface class TrackTrashApi {
     required String lastName,
     String? phone,
     int? locationId,
+    bool? isActive,
   });
   Future<void> changePassword(int userId, String current, String next);
+
+  /// Admin only.
+  Future<List<User>> users();
 
   Future<int> createLocation({
     required String address,
@@ -45,6 +49,9 @@ abstract interface class TrackTrashApi {
   Future<List<Location>> locations();
 
   Future<List<CollectRequest>> requestsByUser(int userId);
+
+  /// Admin only.
+  Future<List<CollectRequest>> allRequests();
 
   /// Pending requests whose materials the signed-in gatherer accepts.
   Future<List<CollectRequest>> pendingRequests();
@@ -76,6 +83,14 @@ abstract interface class TrackTrashApi {
   Future<List<PickupApplication>> myApplications();
 
   Future<List<PickupService>> servicesByGatherer(int gathererId);
+
+  /// Admin only: assigns a gatherer directly, without an application.
+  Future<void> assignGatherer({
+    required int requestId,
+    required int gathererId,
+    required double commissionPercentage,
+    required int byUserId,
+  });
   Future<void> changeServiceStatus(
     int serviceId,
     RequestStatus status, {
@@ -108,6 +123,16 @@ abstract interface class TrackTrashApi {
 
   /// Verified gatherers that accept every material of the request.
   Future<List<Gatherer>> gatherersFor(int requestId);
+
+  /// Admin only.
+  Future<List<Gatherer>> gatherers();
+
+  /// Admin only: verification and activation.
+  Future<void> updateGatherer(
+    Gatherer gatherer, {
+    VerificationStatus? verification,
+    bool? isActive,
+  });
   Future<void> setMyResidueTypes(List<int> residueTypeIds);
   Future<void> createGatherer({
     required int userId,
@@ -125,6 +150,17 @@ abstract interface class TrackTrashApi {
   });
 
   Future<List<ResidueType>> residueTypes();
+
+  /// Admin only.
+  Future<void> saveResidueType({
+    int? id,
+    required String name,
+    required ResidueCategory category,
+    required bool isRecyclable,
+    required bool isActive,
+    String? description,
+    String? instructions,
+  });
   Future<List<CollectionPoint>> collectionPoints();
 
   /// Admin only.
@@ -237,6 +273,7 @@ class DioTrackTrashApi implements TrackTrashApi {
     required String lastName,
     String? phone,
     int? locationId,
+    bool? isActive,
   }) => _send(
     'PUT',
     'User/${user.userId}',
@@ -246,9 +283,14 @@ class DioTrackTrashApi implements TrackTrashApi {
       'phone': _blankToNull(phone),
       'roleId': user.role.api,
       'locationId': locationId ?? user.locationId,
-      'isActive': user.isActive,
+      'isActive': isActive ?? user.isActive,
     }),
   );
+
+  @override
+  Future<List<User>> users() async => [
+    for (final json in await _getList('User')) User.fromJson(json),
+  ];
 
   @override
   Future<void> changePassword(int userId, String current, String next) => _send(
@@ -285,6 +327,12 @@ class DioTrackTrashApi implements TrackTrashApi {
   @override
   Future<List<CollectRequest>> requestsByUser(int userId) async => [
     for (final json in await _getList('CollectRequest/user/$userId'))
+      CollectRequest.fromJson(json),
+  ];
+
+  @override
+  Future<List<CollectRequest>> allRequests() async => [
+    for (final json in await _getList('CollectRequest'))
       CollectRequest.fromJson(json),
   ];
 
@@ -396,6 +444,19 @@ class DioTrackTrashApi implements TrackTrashApi {
   ];
 
   @override
+  Future<void> assignGatherer({
+    required int requestId,
+    required int gathererId,
+    required double commissionPercentage,
+    required int byUserId,
+  }) => _create('PickupService', {
+    'collectRequestId': requestId,
+    'gathererId': gathererId,
+    'commissionPercentage': commissionPercentage,
+    'assignedByUserId': byUserId,
+  });
+
+  @override
   Future<void> changeServiceStatus(
     int serviceId,
     RequestStatus status, {
@@ -481,6 +542,25 @@ class DioTrackTrashApi implements TrackTrashApi {
   ];
 
   @override
+  Future<List<Gatherer>> gatherers() async => [
+    for (final json in await _getList('Gatherer')) Gatherer.fromJson(json),
+  ];
+
+  @override
+  Future<void> updateGatherer(
+    Gatherer gatherer, {
+    VerificationStatus? verification,
+    bool? isActive,
+  }) => _send('PUT', 'Gatherer/${gatherer.gathererId}', {
+    'gathererId': gatherer.gathererId,
+    'gathererTypeId': gatherer.type.api,
+    'description': gatherer.description,
+    'verificationDocument': gatherer.verificationDocument,
+    'verificationStatusId': (verification ?? gatherer.verification).api,
+    'isActive': isActive ?? gatherer.isActive,
+  });
+
+  @override
   Future<void> setMyResidueTypes(List<int> residueTypeIds) => _send(
     'PUT',
     'Gatherer/me/residue-types',
@@ -531,6 +611,31 @@ class DioTrackTrashApi implements TrackTrashApi {
     for (final json in await _getList('ResidueType'))
       ResidueType.fromJson(json),
   ];
+
+  @override
+  Future<void> saveResidueType({
+    int? id,
+    required String name,
+    required ResidueCategory category,
+    required bool isRecyclable,
+    required bool isActive,
+    String? description,
+    String? instructions,
+  }) {
+    final body = <String, dynamic>{
+      'name': name.trim(),
+      'residueCategoryId': category.api,
+      'isRecyclable': isRecyclable,
+      'description': _blankToNull(description),
+      'classificationInstructions': _blankToNull(instructions),
+    };
+    if (id == null) return _create('ResidueType', _clean(body));
+    return _send('PUT', 'ResidueType/$id', {
+      ...body,
+      'residueTypeId': id,
+      'isActive': isActive,
+    });
+  }
 
   @override
   Future<List<CollectionPoint>> collectionPoints() async => [
