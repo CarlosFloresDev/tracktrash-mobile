@@ -188,24 +188,30 @@ class _Body extends ConsumerWidget {
                   )
                 : null,
           ),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-              child: recorded.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Text('Aún no se registra material recuperado.'),
-                    )
-                  : Column(
-                      children: [
-                        for (final item in recorded)
-                          MaterialLine(
-                            residue: residues[item.residueTypeId],
-                            quantity: item.quantity,
-                            unit: item.unit,
-                          ),
-                      ],
-                    ),
+          SizedBox(
+            width: double.infinity,
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 8,
+                ),
+                child: recorded.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Text('Aún no se registra material recuperado.'),
+                      )
+                    : Column(
+                        children: [
+                          for (final item in recorded)
+                            MaterialLine(
+                              residue: residues[item.residueTypeId],
+                              quantity: item.quantity,
+                              unit: item.unit,
+                            ),
+                        ],
+                      ),
+              ),
             ),
           ),
           const SectionTitle('Recolector'),
@@ -218,6 +224,17 @@ class _Body extends ConsumerWidget {
           _CompatibleGatherersCard(requestId: request.id),
         ],
         const SectionTitle('Acciones'),
+        if (user.role == UserRole.admin &&
+            request.status == RequestStatus.pending &&
+            service == null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: FilledButton.icon(
+              onPressed: () => _assign(context, ref),
+              icon: const Icon(Icons.assignment_ind_outlined),
+              label: const Text('Asignar recolector'),
+            ),
+          ),
         if (blocked)
           const _Notice(
             'Tu cuenta aún no está verificada. Podrás postular a recojos cuando el equipo apruebe tu documento.',
@@ -295,7 +312,8 @@ class _Body extends ConsumerWidget {
             label: const Text('Calificar servicio'),
           ),
         if (grade.value != null) _GradeCard(grade: grade.value!),
-        if (isOwner && request.status.isActive) ...[
+        if ((isOwner || user.role == UserRole.admin) &&
+            request.status.isActive) ...[
           const SizedBox(height: 10),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
@@ -382,6 +400,111 @@ class _Body extends ConsumerWidget {
     reason.dispose();
     if (confirmed != true || !context.mounted) return;
     await _run(context, () => run(text.isEmpty ? null : text), success);
+  }
+
+  Future<void> _assign(BuildContext context, WidgetRef ref) async {
+    final commission = TextEditingController(text: '10');
+    Gatherer? chosen;
+    final picked = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheet) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          MediaQuery.viewInsetsOf(sheet).bottom + 24,
+        ),
+        child: Consumer(
+          builder: (sheet, ref, _) {
+            final gatherers = ref.watch(
+              compatibleGatherersProvider(data.request.id),
+            );
+            return StatefulBuilder(
+              builder: (sheet, setState) => Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Asignar recolector',
+                    style: Theme.of(sheet).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Solo aparecen recolectores verificados que aceptan todos los materiales.',
+                  ),
+                  const SizedBox(height: 12),
+                  AsyncContent(
+                    value: gatherers,
+                    onRetry: () => ref.invalidate(
+                      compatibleGatherersProvider(data.request.id),
+                    ),
+                    builder: (items) => items.isEmpty
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Text(
+                              'No hay recolectores compatibles todavía.',
+                            ),
+                          )
+                        : RadioGroup<int>(
+                            groupValue: chosen?.gathererId,
+                            onChanged: (id) => setState(
+                              () => chosen = items.firstWhere(
+                                (g) => g.gathererId == id,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                for (final g in items)
+                                  RadioListTile<int>(
+                                    contentPadding: EdgeInsets.zero,
+                                    value: g.gathererId,
+                                    title: Text(
+                                      g.fullName.isEmpty
+                                          ? 'Recolector #${g.gathererId}'
+                                          : g.fullName,
+                                    ),
+                                    subtitle: Text(g.type.label),
+                                  ),
+                              ],
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: commission,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Comisión (%)',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: chosen == null
+                        ? null
+                        : () => Navigator.pop(sheet, true),
+                    child: const Text('Asignar'),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    final percent = double.tryParse(commission.text.replaceAll(',', '.')) ?? 10;
+    commission.dispose();
+    if (picked != true || chosen == null || !context.mounted) return;
+    await _run(
+      context,
+      () => ref
+          .read(requestActionsProvider)
+          .assign(data.request.id, chosen!, percent.clamp(0, 100).toDouble()),
+      'Recolector asignado.',
+    );
   }
 
   Future<void> _recordMaterial(BuildContext context, WidgetRef ref) async {

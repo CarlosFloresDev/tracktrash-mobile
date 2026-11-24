@@ -103,6 +103,23 @@ class RequestActions {
     _refresh(requestId);
   }
 
+  /// Admin only: assigns a gatherer without waiting for an application.
+  Future<void> assign(
+    int requestId,
+    Gatherer gatherer,
+    double commission,
+  ) async {
+    await _ref
+        .read(apiProvider)
+        .assignGatherer(
+          requestId: requestId,
+          gathererId: gatherer.gathererId,
+          commissionPercentage: commission,
+          byUserId: _user.userId,
+        );
+    _refresh(requestId);
+  }
+
   Future<void> accept(PickupApplication application) async {
     await _ref
         .read(apiProvider)
