@@ -133,19 +133,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 8),
                     const Text('Sigue tus recojos y registra lo recuperado.'),
                     const SizedBox(height: 20),
-                    if (!session.verifiesPassword)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFDF5DC),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Text(
-                          'Acceso provisional: el servidor aún no valida contraseñas. Por ahora se identifica la cuenta solo por correo.',
-                          style: TextStyle(color: Color(0xFFA16207)),
-                        ),
-                      ),
                     TextFormField(
                       controller: _email,
                       keyboardType: TextInputType.emailAddress,
@@ -277,11 +264,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _error = null;
     });
     try {
-      // The backend has no atomic registration endpoint: location, user and role profile are separate calls.
-      final locationId = await api.createLocation(
-        address: _address.text,
-        district: _district,
-      );
+      // Sign-up is anonymous; the address and the role profile need the new account's token.
       final userId = await api.createUser(
         firstName: _first.text,
         lastName: _last.text,
@@ -289,8 +272,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         password: _password.text,
         role: _role,
         phone: _phone.text,
-        locationId: locationId,
       );
+      final session = ref.read(sessionProvider);
+      if (!await session.signIn(_email.text, _password.text)) {
+        if (mounted) context.go('/acceso');
+        return;
+      }
+      int? locationId;
+      if (_role != UserRole.gatherer) {
+        locationId = await api.createLocation(
+          address: _address.text,
+          district: _district,
+        );
+        await api.updateUser(
+          session.user!,
+          firstName: _first.text,
+          lastName: _last.text,
+          phone: _phone.text,
+          locationId: locationId,
+        );
+      }
       if (_role == UserRole.organization) {
         await api.createOrganization(
           userId: userId,
@@ -312,10 +313,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               : _document.text.trim(),
         );
       }
-      final signedIn = await ref
-          .read(sessionProvider)
-          .signIn(_email.text, _password.text);
-      if (!signedIn && mounted) context.go('/acceso');
+      await session.refresh();
     } on ApiFailure catch (failure) {
       if (mounted) setState(() => _error = failure.message);
     } finally {
@@ -416,24 +414,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ? 'Usa al menos 8 caracteres'
                         : null,
                   ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _district,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Distrito'),
-                    items: [
-                      for (final item in _districts)
-                        DropdownMenuItem(value: item, child: Text(item)),
-                    ],
-                    onChanged: (value) =>
-                        setState(() => _district = value ?? 'Arequipa'),
-                  ),
-                  const SizedBox(height: 12),
-                  _field(
-                    _address,
-                    'Dirección',
-                    required: 'Indica tu dirección',
-                  ),
+                  if (_role != UserRole.gatherer) ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _district,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Distrito'),
+                      items: [
+                        for (final item in _districts)
+                          DropdownMenuItem(value: item, child: Text(item)),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _district = value ?? 'Arequipa'),
+                    ),
+                    const SizedBox(height: 12),
+                    _field(
+                      _address,
+                      'Dirección',
+                      required: 'Indica tu dirección',
+                    ),
+                  ],
                   if (_role == UserRole.organization) ...[
                     const SizedBox(height: 12),
                     _field(

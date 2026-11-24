@@ -26,7 +26,7 @@ class RequestTile extends ConsumerWidget {
         location ?? ref.watch(locationByIdProvider)[request.locationId];
     final residues = ref.watch(residueByIdProvider);
     final details =
-        ref.watch(detailsByRequestProvider).value?[request.id] ?? const [];
+        ref.watch(requestDetailsProvider(request.id)).value ?? const [];
     final first = details.isEmpty
         ? null
         : residues[details.first.residueTypeId];

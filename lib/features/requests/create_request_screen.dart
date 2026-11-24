@@ -117,7 +117,7 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
     final useSaved = _useSaved && savedId != null;
     setState(() => _saving = true);
     try {
-      final result = await ref
+      final id = await ref
           .read(requestActionsProvider)
           .create(
             locationId: useSaved ? savedId : null,
@@ -147,11 +147,9 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
       if (!mounted) return;
       showSuccess(
         context,
-        result.failedDetails == 0
-            ? 'Solicitud creada.'
-            : 'Solicitud creada, pero algunos materiales no se guardaron. Revisa el detalle.',
+        'Solicitud creada. Revisa las postulaciones de recolectores en el detalle.',
       );
-      context.go('/solicitudes/${result.id}');
+      context.go('/solicitudes/$id');
     } on ApiFailure catch (failure) {
       if (mounted) showFailure(context, failure);
     } finally {
@@ -174,7 +172,9 @@ class _CreateRequestScreenState extends ConsumerState<CreateRequestScreen> {
           value: residues,
           onRetry: () => ref.invalidate(residueTypesProvider),
           builder: (catalog) {
-            final active = catalog.where((item) => item.isActive).toList();
+            final active = catalog
+                .where((item) => item.isActive && item.isRecyclable)
+                .toList();
             return Form(
               key: _formKey,
               child: ListView(

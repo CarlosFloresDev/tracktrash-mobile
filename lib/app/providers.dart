@@ -1,20 +1,37 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/config.dart';
+import '../data/auth_interceptor.dart';
+import '../data/auth_tokens.dart';
 import '../data/models.dart';
 import '../data/track_trash_api.dart';
 import '../features/session/session.dart';
 
+BaseOptions _options() => BaseOptions(
+  baseUrl: AppConfig.apiUrl,
+  connectTimeout: const Duration(seconds: 10),
+  receiveTimeout: const Duration(seconds: AppConfig.apiTimeoutSeconds),
+  headers: {'Accept': 'application/json'},
+);
+
+final sessionStorageProvider = Provider<SessionStorage>(
+  (ref) => const SecureSessionStorage(),
+);
+
+final tokenVaultProvider = Provider<TokenVault>((ref) {
+  final vault = TokenVault(ref.watch(sessionStorageProvider));
+  ref.onDispose(vault.dispose);
+  return vault;
+});
+
 final dioProvider = Provider<Dio>((ref) {
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.apiUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: AppConfig.apiTimeoutSeconds),
-      headers: {'Accept': 'application/json'},
-    ),
-  );
-  ref.onDispose(dio.close);
+  final plain = Dio(_options());
+  final dio = Dio(_options())
+    ..interceptors.add(AuthInterceptor(ref.watch(tokenVaultProvider), plain));
+  ref.onDispose(() {
+    dio.close();
+    plain.close();
+  });
   return dio;
 });
 
@@ -22,18 +39,12 @@ final apiProvider = Provider<TrackTrashApi>(
   (ref) => DioTrackTrashApi(ref.watch(dioProvider)),
 );
 
-final sessionStorageProvider = Provider<SessionStorage>(
-  (ref) => const SecureSessionStorage(),
+final sessionProvider = ChangeNotifierProvider<SessionController>(
+  (ref) => SessionController(
+    api: ref.watch(apiProvider),
+    vault: ref.watch(tokenVaultProvider),
+  )..restore(),
 );
-
-final sessionProvider = ChangeNotifierProvider<SessionController>((ref) {
-  final api = ref.watch(apiProvider);
-  return SessionController(
-    api: api,
-    gateway: ProvisionalAuthGateway(api),
-    storage: ref.watch(sessionStorageProvider),
-  )..restore();
-});
 
 /// Catalog of residue types, shared by every screen that shows or picks a material.
 final residueTypesProvider = FutureProvider<List<ResidueType>>(

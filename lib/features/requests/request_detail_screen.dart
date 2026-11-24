@@ -71,11 +71,21 @@ class _Body extends ConsumerWidget {
         ? ref.watch(gradeProvider((serviceId: service.id, userId: user.userId)))
         : const AsyncData<Grade?>(null);
 
-    final canTake =
+    final canApply =
         user.role == UserRole.gatherer &&
         request.status == RequestStatus.pending &&
         service == null &&
         (gatherer?.canTakeRequests ?? false);
+    final application = canApply
+        ? ref
+              .watch(myApplicationsProvider)
+              .value
+              ?.where((item) => item.collectRequestId == request.id)
+              .firstOrNull
+        : null;
+    final managesApplications =
+        (isOwner || user.role == UserRole.admin) &&
+        request.status == RequestStatus.pending;
     final blocked =
         user.role == UserRole.gatherer && !(gatherer?.canTakeRequests ?? false);
     final canRate =
@@ -119,6 +129,16 @@ class _Body extends ConsumerWidget {
                   InfoRow(
                     icon: Icons.signpost_outlined,
                     text: data.location.reference!,
+                  ),
+                if (!isOwner)
+                  InfoRow(
+                    icon: Icons.person_outline_rounded,
+                    text:
+                        ref
+                            .watch(requesterProfileProvider(request.id))
+                            .value
+                            ?.displayName ??
+                        'Solicitante',
                   ),
                 if (request.observations != null)
                   InfoRow(
@@ -191,20 +211,30 @@ class _Body extends ConsumerWidget {
           const SectionTitle('Recolector'),
           _GathererCard(service: service),
         ],
+        if (managesApplications) ...[
+          const SectionTitle('Postulaciones'),
+          _ApplicationsCard(requestId: request.id),
+          const SectionTitle('Recolectores compatibles'),
+          _CompatibleGatherersCard(requestId: request.id),
+        ],
         const SectionTitle('Acciones'),
         if (blocked)
           const _Notice(
-            'Tu cuenta aún no está verificada. Podrás tomar recojos cuando el equipo apruebe tu documento.',
+            'Tu cuenta aún no está verificada. Podrás postular a recojos cuando el equipo apruebe tu documento.',
           ),
-        if (canTake)
+        if (canApply && application != null)
+          _Notice(
+            'Ya te postulaste a este recojo (${application.status.label.toLowerCase()}). El solicitante elegirá al recolector.',
+          ),
+        if (canApply && application == null)
           FilledButton.icon(
             onPressed: () => _run(
               context,
-              () => ref.read(requestActionsProvider).take(request.id),
-              'Tomaste este recojo.',
+              () => ref.read(requestActionsProvider).apply(request.id),
+              'Postulación enviada. Te avisaremos si te eligen.',
             ),
             icon: const Icon(Icons.local_shipping_outlined),
-            label: const Text('Tomar este recojo'),
+            label: const Text('Postularme a este recojo'),
           ),
         if (isServiceGatherer && service.status == RequestStatus.assigned)
           FilledButton.icon(
@@ -607,13 +637,14 @@ class _GathererCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final gatherers = ref.watch(_gatherersProvider);
-    final gatherer = gatherers.value
-        ?.where((item) => item.gathererId == service.gathererId)
-        .firstOrNull;
-    final owner = gatherer == null
+    final session = ref.watch(sessionProvider);
+    final own = session.gatherer;
+    // Gatherers cannot read other gatherer profiles; everyone else asks the API.
+    final gatherer = own?.gathererId == service.gathererId
+        ? own
+        : session.user?.role == UserRole.gatherer
         ? null
-        : ref.watch(_userProvider(gatherer.userId)).value;
+        : ref.watch(gathererByIdProvider(service.gathererId)).value;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -621,7 +652,9 @@ class _GathererCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              owner?.fullName ?? 'Recolector #${service.gathererId}',
+              gatherer == null || gatherer.fullName.isEmpty
+                  ? 'Recolector #${service.gathererId}'
+                  : gatherer.fullName,
               style: const TextStyle(
                 fontWeight: FontWeight.w800,
                 color: EcoColors.pine,
@@ -657,12 +690,157 @@ class _GathererCard extends ConsumerWidget {
   }
 }
 
-final _gatherersProvider = FutureProvider.autoDispose<List<Gatherer>>(
-  (ref) => ref.watch(apiProvider).gatherers(),
-);
-final _userProvider = FutureProvider.autoDispose.family<User, int>(
-  (ref, id) => ref.watch(apiProvider).userById(id),
-);
+/// Applications received by a pending request; accepting one assigns that gatherer.
+class _ApplicationsCard extends ConsumerStatefulWidget {
+  const _ApplicationsCard({required this.requestId});
+  final int requestId;
+
+  @override
+  ConsumerState<_ApplicationsCard> createState() => _ApplicationsCardState();
+}
+
+class _ApplicationsCardState extends ConsumerState<_ApplicationsCard> {
+  bool _busy = false;
+
+  Future<void> _decide(Future<void> Function() action, String success) async {
+    setState(() => _busy = true);
+    try {
+      await action();
+      if (mounted) showSuccess(context, success);
+    } on ApiFailure catch (failure) {
+      if (mounted) showFailure(context, failure);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final applications = ref.watch(applicationsProvider(widget.requestId));
+    final actions = ref.read(requestActionsProvider);
+    return AsyncContent(
+      value: applications,
+      onRetry: () => ref.invalidate(applicationsProvider(widget.requestId)),
+      builder: (items) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: items.isEmpty
+              ? const Text(
+                  'Aún no hay postulaciones. Los recolectores compatibles verán tu solicitud.',
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final item in items)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.fullName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: EcoColors.pine,
+                              ),
+                            ),
+                            Text(
+                              '${item.status.label} · ${item.verification.label}',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            if (item.description != null)
+                              Text(item.description!),
+                            if (item.status == ApplicationStatus.pending) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: FilledButton(
+                                      onPressed: _busy
+                                          ? null
+                                          : () => _decide(
+                                              () => actions.accept(item),
+                                              'Recolector asignado.',
+                                            ),
+                                      child: const Text('Aceptar'),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: _busy
+                                          ? null
+                                          : () => _decide(
+                                              () => actions.reject(item),
+                                              'Postulación rechazada.',
+                                            ),
+                                      child: const Text('Rechazar'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Verified gatherers that accept every material of the request.
+class _CompatibleGatherersCard extends ConsumerWidget {
+  const _CompatibleGatherersCard({required this.requestId});
+  final int requestId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final gatherers = ref.watch(compatibleGatherersProvider(requestId));
+    return AsyncContent(
+      value: gatherers,
+      onRetry: () => ref.invalidate(compatibleGatherersProvider(requestId)),
+      builder: (items) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: items.isEmpty
+              ? const Text(
+                  'Aún no hay recolectores verificados que acepten todos estos materiales.',
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final item in items)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.fullName.isEmpty
+                                  ? 'Recolector #${item.gathererId}'
+                                  : item.fullName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: EcoColors.pine,
+                              ),
+                            ),
+                            Text(
+                              '${item.type.label} · Acepta: ${item.supportedResidueTypes.map((type) => type.name).join(', ')}',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
 
 class _GradeCard extends StatelessWidget {
   const _GradeCard({required this.grade});

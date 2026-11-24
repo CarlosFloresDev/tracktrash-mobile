@@ -24,7 +24,7 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
       onRefresh: () async {
         ref
           ..invalidate(myRequestsProvider)
-          ..invalidate(detailsByRequestProvider);
+          ..invalidate(requestDetailsProvider);
         await ref.read(myRequestsProvider.future);
       },
       child: ListView(

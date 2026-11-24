@@ -12,9 +12,12 @@ final myRequestsProvider = FutureProvider.autoDispose<List<CollectRequest>>((
   return [...items]..sort((a, b) => b.id.compareTo(a.id));
 });
 
-/// Pending requests that still have no gatherer.
+/// Pending requests the signed-in gatherer can apply to. The backend filters them by the
+/// materials the gatherer accepts and only serves them to verified gatherers.
 final pendingRequestsProvider =
     FutureProvider.autoDispose<List<CollectRequest>>((ref) async {
+      final gatherer = ref.watch(sessionProvider).gatherer;
+      if (gatherer == null || !gatherer.canTakeRequests) return const [];
       final items = await ref.watch(apiProvider).pendingRequests();
       return [...items]..sort(
         (a, b) => '${a.scheduledDate}${a.scheduledTime}'.compareTo(
@@ -23,17 +26,11 @@ final pendingRequestsProvider =
       );
     });
 
-/// Every request detail, grouped by request. The backend has no per-list summary,
-/// so list screens read the materials from here.
-final detailsByRequestProvider =
-    FutureProvider.autoDispose<Map<int, List<RequestDetail>>>((ref) async {
-      final details = await ref.watch(apiProvider).requestDetails();
-      final grouped = <int, List<RequestDetail>>{};
-      for (final detail in details) {
-        grouped.putIfAbsent(detail.collectRequestId, () => []).add(detail);
-      }
-      return grouped;
-    });
+/// Materials of one request, for list tiles.
+final requestDetailsProvider = FutureProvider.autoDispose
+    .family<List<RequestDetail>, int>(
+      (ref, id) => ref.watch(apiProvider).detailsOf(id),
+    );
 
 final requestFullProvider = FutureProvider.autoDispose
     .family<CollectRequestFull, int>(
@@ -46,6 +43,34 @@ final requestHistoryProvider = FutureProvider.autoDispose
       return [...items]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     });
 
+final requesterProfileProvider = FutureProvider.autoDispose
+    .family<RequesterProfile, int>(
+      (ref, id) => ref.watch(apiProvider).requesterProfile(id),
+    );
+
+/// Applications received by a request (visible to its owner).
+final applicationsProvider = FutureProvider.autoDispose
+    .family<List<PickupApplication>, int>(
+      (ref, id) => ref.watch(apiProvider).applicationsOf(id),
+    );
+
+/// Verified gatherers that accept every material of a request (visible to its owner).
+final compatibleGatherersProvider = FutureProvider.autoDispose
+    .family<List<Gatherer>, int>(
+      (ref, id) => ref.watch(apiProvider).gatherersFor(id),
+    );
+
+/// Applications sent by the signed-in gatherer.
+final myApplicationsProvider =
+    FutureProvider.autoDispose<List<PickupApplication>>((ref) async {
+      if (ref.watch(sessionProvider).gatherer == null) return const [];
+      return ref.watch(apiProvider).myApplications();
+    });
+
+final gathererByIdProvider = FutureProvider.autoDispose.family<Gatherer, int>(
+  (ref, id) => ref.watch(apiProvider).gathererById(id),
+);
+
 final serviceMaterialsProvider = FutureProvider.autoDispose
     .family<List<RecoveredMaterial>, int>(
       (ref, serviceId) => ref.watch(apiProvider).materialsByService(serviceId),
@@ -57,13 +82,19 @@ final gradeProvider = FutureProvider.autoDispose.family<Grade?, GradeKey>(
   (ref, key) => ref.watch(apiProvider).gradeFor(key.serviceId, key.userId),
 );
 
+final _myServicesProvider = FutureProvider.autoDispose<List<PickupService>>((
+  ref,
+) async {
+  final gatherer = ref.watch(sessionProvider).gatherer;
+  if (gatherer == null) return const [];
+  return ref.watch(apiProvider).servicesByGatherer(gatherer.gathererId);
+});
+
 /// Requests behind the services of the signed-in gatherer.
 final gathererRequestsProvider =
     FutureProvider.autoDispose<List<CollectRequestFull>>((ref) async {
-      final gatherer = ref.watch(sessionProvider).gatherer;
-      if (gatherer == null) return const [];
       final api = ref.watch(apiProvider);
-      final services = await api.servicesByGatherer(gatherer.gathererId);
+      final services = await ref.watch(_myServicesProvider.future);
       final items = await Future.wait([
         for (final service in services)
           api.requestFull(service.collectRequestId),
@@ -75,28 +106,33 @@ final gathererRequestsProvider =
 final gathererKilogramsProvider = FutureProvider.autoDispose<double>((
   ref,
 ) async {
-  final gatherer = ref.watch(sessionProvider).gatherer;
-  if (gatherer == null) return 0;
   final api = ref.watch(apiProvider);
-  final services = await api.servicesByGatherer(gatherer.gathererId);
-  final mine = {for (final service in services) service.id};
-  final materials = await api.allMaterials();
+  final services = await ref.watch(_myServicesProvider.future);
+  final materials = await Future.wait([
+    for (final service in services) api.materialsByService(service.id),
+  ]);
   return materials
-      .where(
-        (item) => mine.contains(item.pickupServiceId) && item.unit.api == 'Kg',
-      )
+      .expand((items) => items)
+      .where((item) => item.unit.api == 'Kg')
       .fold<double>(0, (sum, item) => sum + item.quantity);
 });
 
+/// Average score of the signed-in gatherer, built from the grades linked to them.
 final gathererRatingProvider = FutureProvider.autoDispose<GathererRating?>((
   ref,
 ) async {
   final gatherer = ref.watch(sessionProvider).gatherer;
   if (gatherer == null) return null;
-  final ratings = await ref.watch(apiProvider).gathererRatings();
-  return ratings
-      .where((item) => item.gathererId == gatherer.gathererId)
-      .firstOrNull;
+  final api = ref.watch(apiProvider);
+  final ids = await api.gradeIdsOfGatherer(gatherer.gathererId);
+  if (ids.isEmpty) return null;
+  final grades = await Future.wait([for (final id in ids) api.gradeById(id)]);
+  return GathererRating(
+    gathererId: gatherer.gathererId,
+    averageScore:
+        grades.fold<int>(0, (sum, grade) => sum + grade.score) / grades.length,
+    totalGrades: grades.length,
+  );
 });
 
 final generalIndicatorsProvider = FutureProvider.autoDispose<GeneralIndicators>(

@@ -142,7 +142,7 @@ class _GathererHome extends ConsumerWidget {
             ),
             child: Text(
               gatherer.verification == VerificationStatus.pending
-                  ? 'Tu cuenta está en revisión. Cuando el equipo apruebe tu documento podrás tomar recojos.'
+                  ? 'Tu cuenta está en revisión. Cuando el equipo apruebe tu documento podrás postular a recojos.'
                   : 'Tu verificación no está activa. Comunícate con el equipo de TrackTrash.',
               style: const TextStyle(color: Color(0xFFA16207)),
             ),
@@ -189,7 +189,7 @@ class _GathererHome extends ConsumerWidget {
               return EcoEmpty(
                 title: 'No tienes recojos en curso',
                 message:
-                    'Revisa los recojos disponibles y toma el que mejor te convenga.',
+                    'Revisa los recojos disponibles y postúlate al que mejor te convenga.',
                 icon: Icons.local_shipping_outlined,
                 action: FilledButton(
                   onPressed: () => context.go('/disponibles'),

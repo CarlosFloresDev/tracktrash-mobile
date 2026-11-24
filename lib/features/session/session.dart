@@ -1,83 +1,25 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/api_failure.dart';
+import '../../data/auth_tokens.dart';
 import '../../data/enums.dart';
 import '../../data/models.dart';
 import '../../data/track_trash_api.dart';
 
-/// The backend does not expose authentication yet: there is no login endpoint and tokens are not validated.
-/// Everything about "signing in" goes through this gateway so adopting a real
-/// `POST /api/Auth/login` later only means providing another implementation.
-abstract interface class AuthGateway {
-  bool get verifiesPassword;
-  Future<User> signIn(String email, String password);
-  Future<User> restore(int userId);
-}
-
-/// Provisional: resolves the account by e-mail. The password is NOT verified by the backend.
-class ProvisionalAuthGateway implements AuthGateway {
-  ProvisionalAuthGateway(this._api);
-  final TrackTrashApi _api;
-
-  @override
-  bool get verifiesPassword => false;
-
-  @override
-  Future<User> signIn(String email, String password) async {
-    try {
-      return _ensureActive(await _api.userByEmail(email));
-    } on ApiFailure catch (failure) {
-      if (failure.isNotFound) {
-        throw const ApiFailure('No encontramos una cuenta con ese correo.');
-      }
-      rethrow;
-    }
-  }
-
-  @override
-  Future<User> restore(int userId) async =>
-      _ensureActive(await _api.userById(userId));
-
-  User _ensureActive(User user) {
-    if (!user.isActive) throw const ApiFailure('Esta cuenta está desactivada.');
-    return user;
-  }
-}
-
-abstract interface class SessionStorage {
-  Future<int?> readUserId();
-  Future<void> writeUserId(int? userId);
-}
-
-class SecureSessionStorage implements SessionStorage {
-  const SecureSessionStorage();
-  static const _key = 'tracktrash.user_id';
-  static const _storage = FlutterSecureStorage();
-
-  @override
-  Future<int?> readUserId() async {
-    final raw = await _storage.read(key: _key);
-    return raw == null ? null : int.tryParse(raw);
-  }
-
-  @override
-  Future<void> writeUserId(int? userId) => userId == null
-      ? _storage.delete(key: _key)
-      : _storage.write(key: _key, value: '$userId');
-}
-
+/// Signed-in state. Login exchanges e-mail and password for a JWT pair kept in [TokenVault];
+/// the HTTP layer renews it, and when the server ends the session this controller signs out.
 class SessionController extends ChangeNotifier {
-  SessionController({
-    required TrackTrashApi api,
-    required AuthGateway gateway,
-    required SessionStorage storage,
-  }) : _api = api,
-       _gateway = gateway,
-       _storage = storage;
+  SessionController({required TrackTrashApi api, required TokenVault vault})
+    : _api = api,
+      _vault = vault {
+    _expiry = vault.onExpired.listen(
+      (_) => _clearProfile(message: 'Tu sesión expiró. Vuelve a ingresar.'),
+    );
+  }
 
   final TrackTrashApi _api;
-  final AuthGateway _gateway;
-  final SessionStorage _storage;
+  final TokenVault _vault;
+  late final StreamSubscription<void> _expiry;
   bool _disposed = false;
 
   User? _user;
@@ -94,7 +36,6 @@ class SessionController extends ChangeNotifier {
   bool get restoring => _restoring;
   bool get busy => _busy;
   String? get error => _error;
-  bool get verifiesPassword => _gateway.verifiesPassword;
 
   void _notify() {
     if (!_disposed) notifyListeners();
@@ -103,15 +44,10 @@ class SessionController extends ChangeNotifier {
   /// Restores the previous session, if any. Called once at startup.
   Future<void> restore() async {
     try {
-      final id = await _storage.readUserId();
-      if (id != null) {
-        final user = await _gateway.restore(id);
-        await _load(user);
-      }
-    } on ApiFailure {
-      await _storage.writeUserId(null);
-    } catch (_) {
-      // Storage unavailable (for example in some browsers): start signed out.
+      if (await _vault.load() != null) await _load(await _api.me());
+    } on ApiFailure catch (failure) {
+      // A network error keeps the tokens so the next start can retry; a rejection drops them.
+      if (failure.statusCode != null) await _vault.clear();
     } finally {
       _restoring = false;
       _notify();
@@ -124,9 +60,13 @@ class SessionController extends ChangeNotifier {
     _error = null;
     _notify();
     try {
-      final user = await _gateway.signIn(email, password);
+      await _vault.save(await _authenticate(email, password));
+      final user = await _api.me();
+      if (!user.isActive) {
+        await signOut();
+        throw const ApiFailure('Esta cuenta está desactivada.');
+      }
       await _load(user);
-      await _storage.writeUserId(user.userId).catchError((Object _) {});
       return true;
     } on ApiFailure catch (failure) {
       _error = failure.message;
@@ -137,21 +77,35 @@ class SessionController extends ChangeNotifier {
     }
   }
 
+  Future<AuthTokens> _authenticate(String email, String password) async {
+    try {
+      return await _api.login(email, password);
+    } on ApiFailure catch (failure) {
+      if (failure.statusCode == 401) {
+        throw const ApiFailure(
+          'Correo o contraseña incorrectos, o cuenta desactivada.',
+          statusCode: 401,
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Revokes the refresh token on the server (best effort) and forgets the session locally.
   Future<void> signOut() async {
-    _user = null;
-    _gatherer = null;
-    _organization = null;
-    _error = null;
-    _notify();
-    await _storage.writeUserId(null).catchError((Object _) {});
+    final refreshToken = _vault.tokens?.refreshToken;
+    _clearProfile();
+    await _vault.clear();
+    if (refreshToken != null) {
+      await _api.logout(refreshToken).catchError((Object _) {});
+    }
   }
 
   /// Reloads the signed-in user and role profiles (after an edit, or a verification by an admin).
   Future<void> refresh() async {
-    final current = _user;
-    if (current == null) return;
+    if (_user == null) return;
     try {
-      await _load(await _api.userById(current.userId));
+      await _load(await _api.me());
       _notify();
     } on ApiFailure {
       // Keep the cached profile; the next screen load reports connectivity problems.
@@ -170,9 +124,19 @@ class SessionController extends ChangeNotifier {
     _organization = organization;
   }
 
+  void _clearProfile({String? message}) {
+    if (_user == null && message != null) return;
+    _user = null;
+    _gatherer = null;
+    _organization = null;
+    _error = message;
+    _notify();
+  }
+
   @override
   void dispose() {
     _disposed = true;
+    _expiry.cancel();
     super.dispose();
   }
 }
