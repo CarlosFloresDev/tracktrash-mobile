@@ -4,6 +4,7 @@ import '../../app/providers.dart';
 import '../../core/api_failure.dart';
 import '../../ui/eco_design.dart';
 import '../../ui/widgets.dart';
+import 'gatherer_materials.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -152,6 +153,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ),
             ),
           ),
+          const SectionTitle('Materiales que aceptas'),
+          GathererMaterialsCard(gatherer: gatherer),
         ],
         const SectionTitle('Datos personales'),
         Form(
