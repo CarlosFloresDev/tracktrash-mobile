@@ -4,6 +4,7 @@ import '../../app/providers.dart';
 import '../../core/api_failure.dart';
 import '../../ui/eco_design.dart';
 import '../../ui/widgets.dart';
+import 'change_password.dart';
 import 'gatherer_materials.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -198,6 +199,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ],
           ),
         ),
+        const SectionTitle('Seguridad'),
+        const ChangePasswordCard(),
         const SizedBox(height: 24),
         OutlinedButton.icon(
           onPressed: () => ref.read(sessionProvider).signOut(),
