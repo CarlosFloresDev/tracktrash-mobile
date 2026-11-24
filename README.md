@@ -23,6 +23,11 @@
 verificados. Esta es la app móvil, pensada para el uso en la calle: pedir un recojo desde casa o postularse a él y registrar los
 kilos recuperados como recolector. Comparte el contrato con la [plataforma web](https://github.com/CarlosFloresDev/tracktrash-web).
 
+| En línea | URL |
+| --- | --- |
+| API usada por el APK | https://tracktrash-backend.onrender.com |
+| Web | https://tracktrash.pages.dev |
+
 | Repositorio | Tecnología |
 | --- | --- |
 | Mobile (este repositorio) | Flutter, Riverpod, go_router, Dio |
@@ -100,7 +105,7 @@ flutter run --dart-define=API_BASE_URL=http://localhost:5145
 | Navegador o escritorio | `http://localhost:5145` |
 | Emulador Android | `http://10.0.2.2:5145` |
 | Teléfono físico | `http://<IP-de-tu-PC>:5145` |
-| Producción | `https://<api-en-render>` |
+| Producción | `https://tracktrash-backend.onrender.com` |
 
 ```powershell
 flutter analyze
@@ -108,7 +113,7 @@ flutter test
 # Flujo completo contra una API real (registro, postulación, recojo, calificación, refresh y logout):
 flutter test test/e2e --dart-define=E2E_API=http://localhost:5145 `
   --dart-define=E2E_ADMIN=admin@tracktrash.pe --dart-define=E2E_ADMIN_PASSWORD=TrackTrash2026!
-flutter build apk --release --dart-define=API_BASE_URL=https://<api-en-render>
+flutter build apk --release --split-per-abi --dart-define=API_BASE_URL=https://tracktrash-backend.onrender.com
 ```
 
 Cuentas de ejemplo (contraseña `TrackTrash2026!`): `lucia@correo.pe` (hogar), `elmer@recicla.pe` (recolector),
