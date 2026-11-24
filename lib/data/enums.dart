@@ -110,3 +110,18 @@ enum OrganizationType {
   static OrganizationType parse(String value) =>
       values.firstWhere((type) => type.api == value, orElse: () => other);
 }
+
+/// State of a gatherer's application to a pending request.
+enum ApplicationStatus {
+  pending('Pending', 'Pendiente'),
+  accepted('Accepted', 'Aceptada'),
+  rejected('Rejected', 'Rechazada'),
+  withdrawn('Withdrawn', 'Retirada');
+
+  const ApplicationStatus(this.api, this.label);
+  final String api;
+  final String label;
+
+  static ApplicationStatus parse(String value) =>
+      values.firstWhere((status) => status.api == value, orElse: () => pending);
+}

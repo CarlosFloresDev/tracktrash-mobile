@@ -240,15 +240,25 @@ class Gatherer {
     required this.isActive,
     this.description,
     this.verificationDocument,
+    this.firstName = '',
+    this.lastName = '',
+    this.supportedResidueTypes = const [],
   });
 
   final int gathererId;
   final int userId;
+  final String firstName;
+  final String lastName;
   final GathererType type;
   final String? description;
   final String? verificationDocument;
   final VerificationStatus verification;
   final bool isActive;
+
+  /// Materials this gatherer accepts; only requests made of them reach the gatherer.
+  final List<ResidueType> supportedResidueTypes;
+
+  String get fullName => '$firstName $lastName'.trim();
 
   bool get canTakeRequests =>
       verification == VerificationStatus.verified && isActive;
@@ -263,6 +273,79 @@ class Gatherer {
       json['verificationStatusId'] as String,
     ),
     isActive: json['isActive'] as bool,
+    firstName: json['firstName'] as String? ?? '',
+    lastName: json['lastName'] as String? ?? '',
+    supportedResidueTypes: [
+      for (final item in json['supportedResidueTypes'] as List? ?? const [])
+        ResidueType.fromJson(item as Json),
+    ],
+  );
+}
+
+/// A gatherer's application to take a pending request. The requester accepts or rejects it.
+@immutable
+class PickupApplication {
+  const PickupApplication({
+    required this.id,
+    required this.collectRequestId,
+    required this.gathererId,
+    required this.firstName,
+    required this.lastName,
+    required this.verification,
+    required this.status,
+    required this.appliedAt,
+    this.description,
+    this.respondedAt,
+  });
+
+  final int id;
+  final int collectRequestId;
+  final int gathererId;
+  final String firstName;
+  final String lastName;
+  final String? description;
+  final VerificationStatus verification;
+  final ApplicationStatus status;
+  final DateTime appliedAt;
+  final DateTime? respondedAt;
+
+  String get fullName => '$firstName $lastName'.trim();
+
+  factory PickupApplication.fromJson(Json json) => PickupApplication(
+    id: json['applicationId'] as int,
+    collectRequestId: json['collectRequestId'] as int,
+    gathererId: json['gathererId'] as int,
+    firstName: json['firstName'] as String,
+    lastName: json['lastName'] as String,
+    description: json['description'] as String?,
+    verification: VerificationStatus.parse(
+      json['verificationStatusId'] as String,
+    ),
+    status: ApplicationStatus.parse(json['statusId'] as String),
+    appliedAt: _timestamp(json['appliedAt']),
+    respondedAt: _timestampOrNull(json['respondedAt']),
+  );
+}
+
+/// Public name of whoever asked for a request, readable by its gatherer.
+@immutable
+class RequesterProfile {
+  const RequesterProfile({
+    required this.firstName,
+    required this.lastName,
+    this.organizationName,
+  });
+
+  final String firstName;
+  final String lastName;
+  final String? organizationName;
+
+  String get displayName => organizationName ?? '$firstName $lastName'.trim();
+
+  factory RequesterProfile.fromJson(Json json) => RequesterProfile(
+    firstName: json['firstName'] as String,
+    lastName: json['lastName'] as String,
+    organizationName: json['organizationName'] as String?,
   );
 }
 
