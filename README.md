@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/Dart-3.11-143d2b?style=for-the-badge&logo=dart&logoColor=d7f58b" alt="Dart 3.11">
   <img src="https://img.shields.io/badge/Riverpod-estado-143d2b?style=for-the-badge" alt="Riverpod">
   <img src="https://img.shields.io/badge/Android-APK-143d2b?style=for-the-badge&logo=android&logoColor=d7f58b" alt="Android">
-  <img src="https://img.shields.io/badge/Pruebas-23-143d2b?style=for-the-badge" alt="23 pruebas">
+  <img src="https://img.shields.io/badge/Pruebas-27-143d2b?style=for-the-badge" alt="27 pruebas">
 </p>
 
 <p align="center">
@@ -40,8 +40,9 @@ kilos recuperados como recolector. Comparte el contrato con la [plataforma web](
 | --- | --- |
 | Hogar y organización | Crear solicitudes (materiales, dirección con GPS opcional, fecha y hora), ver recolectores compatibles, aceptar o rechazar postulaciones, seguir el estado, cancelar y calificar |
 | Recolector | Elegir los materiales que acepta, ver recojos compatibles y postularse, seguir sus postulaciones, iniciar, registrar material recuperado, finalizar o soltar; kilos y calificación propios |
-| Administrador | Indicadores generales (la gestión completa está en la web) |
-| Todos | Inicio de sesión con JWT y sesión persistente, mapa de puntos de acopio, perfil y edición de datos |
+| Administrador | Indicadores, todas las solicitudes, asignar recolector directamente, verificar o rechazar recolectores, activar o desactivar usuarios y editar el catálogo de materiales |
+| Todos | Inicio de sesión con JWT y sesión persistente, mapa de puntos de acopio, perfil, edición de datos y cambio de contraseña |
+| Búsqueda y filtros | Buscador sin distinguir tildes ni mayúsculas y chips con contador por estado, distrito, rol, verificación y categoría en cada lista |
 
 Experiencia: banner animado, mascota flotante, entrada escalonada de tarjetas, tirar para actualizar, estados de carga,
 vacío y error, y respeto a la opción "reducir movimiento" del sistema.
