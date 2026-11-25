@@ -5,6 +5,7 @@ import '../../ui/async_content.dart';
 import '../../ui/eco_design.dart';
 import '../../app/providers.dart';
 import '../../data/enums.dart';
+import '../../ui/filters.dart';
 import 'request_providers.dart';
 import 'request_tile.dart';
 
@@ -18,10 +19,20 @@ class RequestsPage extends ConsumerStatefulWidget {
 
 class _RequestsPageState extends ConsumerState<RequestsPage> {
   bool _active = true;
+  String _query = '';
+  RequestStatus? _status;
+
+  void _resetFilters() {
+    setState(() {
+      _query = '';
+      _status = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final requests = ref.watch(visibleRequestsProvider);
+    final locations = ref.watch(locationByIdProvider);
     final isAdmin = ref.watch(sessionProvider).user?.role == UserRole.admin;
     return RefreshIndicator(
       onRefresh: () async {
@@ -44,18 +55,19 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
               ButtonSegment(value: false, label: Text('Terminadas')),
             ],
             selected: {_active},
-            onSelectionChanged: (value) =>
-                setState(() => _active = value.first),
+            onSelectionChanged: (value) => setState(() {
+              _active = value.first;
+              _status = null;
+            }),
           ),
-          const SizedBox(height: 16),
           AsyncContent(
             value: requests,
             onRetry: () => ref.invalidate(visibleRequestsProvider),
             builder: (items) {
-              final visible = items
+              final segment = items
                   .where((item) => item.status.isActive == _active)
                   .toList();
-              if (visible.isEmpty) {
+              if (segment.isEmpty) {
                 return EcoEmpty(
                   title: _active
                       ? 'No tienes solicitudes en curso'
@@ -72,10 +84,71 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
                       : null,
                 );
               }
+              final statusOptions = _active
+                  ? const [
+                      RequestStatus.pending,
+                      RequestStatus.assigned,
+                      RequestStatus.inProgress,
+                    ]
+                  : const [RequestStatus.completed, RequestStatus.cancelled];
+              final filtered = segment.where((item) {
+                final location = locations[item.locationId];
+                final matchesStatus = _status == null || item.status == _status;
+                final matchesSearch = matchesQuery(_query, [
+                  '#${item.id}',
+                  location?.address,
+                  location?.district,
+                  item.observations,
+                ]);
+                return matchesStatus && matchesSearch;
+              }).toList();
+              final activeFilters = _query.isNotEmpty || _status != null;
               return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final (i, item) in visible.indexed)
-                    RequestTile(request: item, index: i),
+                  const SizedBox(height: 12),
+                  SearchField(
+                    value: _query,
+                    hint: 'Buscar por N°, dirección o distrito',
+                    onChanged: (value) => setState(() => _query = value),
+                  ),
+                  const SizedBox(height: 12),
+                  FilterChipsRow<RequestStatus>(
+                    options: [
+                      ChipOption(null, 'Todos', count: segment.length),
+                      for (final status in statusOptions)
+                        ChipOption(
+                          status,
+                          status.label,
+                          count: segment
+                              .where((item) => item.status == status)
+                              .length,
+                        ),
+                    ],
+                    selected: _status,
+                    onSelected: (value) => setState(() => _status = value),
+                  ),
+                  if (filtered.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    FilterSummary(
+                      shown: filtered.length,
+                      total: segment.length,
+                      active: activeFilters,
+                      onReset: _resetFilters,
+                    ),
+                    for (final (i, item) in filtered.indexed)
+                      RequestTile(request: item, index: i),
+                  ] else
+                    EcoEmpty(
+                      title: 'Sin resultados',
+                      message:
+                          'Prueba con otras palabras o limpia los filtros.',
+                      icon: Icons.search_off_rounded,
+                      action: TextButton(
+                        onPressed: _resetFilters,
+                        child: const Text('Limpiar filtros'),
+                      ),
+                    ),
                 ],
               );
             },

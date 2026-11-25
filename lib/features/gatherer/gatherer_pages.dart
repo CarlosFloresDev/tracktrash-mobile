@@ -6,19 +6,36 @@ import '../../data/enums.dart';
 import '../../data/models.dart';
 import '../../ui/async_content.dart';
 import '../../ui/eco_design.dart';
+import '../../ui/filters.dart';
 import '../../ui/widgets.dart';
 import '../requests/request_providers.dart';
 import '../requests/request_tile.dart';
 
 /// Pending requests whose materials the verified gatherer accepts, plus their applications.
-class AvailablePage extends ConsumerWidget {
+class AvailablePage extends ConsumerStatefulWidget {
   const AvailablePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AvailablePage> createState() => _AvailablePageState();
+}
+
+class _AvailablePageState extends ConsumerState<AvailablePage> {
+  String _query = '';
+  String? _district;
+
+  void _resetFilters() {
+    setState(() {
+      _query = '';
+      _district = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final gatherer = ref.watch(sessionProvider).gatherer;
     final pending = ref.watch(pendingRequestsProvider);
     final applications = ref.watch(myApplicationsProvider);
+    final locations = ref.watch(locationByIdProvider);
     return RefreshIndicator(
       onRefresh: () async {
         ref
@@ -62,18 +79,77 @@ class AvailablePage extends ConsumerWidget {
             AsyncContent(
               value: pending,
               onRetry: () => ref.invalidate(pendingRequestsProvider),
-              builder: (items) => items.isEmpty
-                  ? const EcoEmpty(
-                      title: 'No hay recojos pendientes',
-                      message: 'Cuando alguien pida un recojo aparecerá aquí.',
-                      icon: Icons.inventory_2_outlined,
-                    )
-                  : Column(
-                      children: [
-                        for (final (i, item) in items.indexed)
-                          RequestTile(request: item, index: i),
-                      ],
+              builder: (items) {
+                if (items.isEmpty) {
+                  return const EcoEmpty(
+                    title: 'No hay recojos pendientes',
+                    message: 'Cuando alguien pida un recojo aparecerá aquí.',
+                    icon: Icons.inventory_2_outlined,
+                  );
+                }
+                final districts = [
+                  for (final district
+                      in items
+                          .map((item) => locations[item.locationId]?.district)
+                          .whereType<String>()
+                          .toSet())
+                    district,
+                ]..sort();
+                final filtered = items.where((item) {
+                  final location = locations[item.locationId];
+                  final matchesDistrict =
+                      _district == null || location?.district == _district;
+                  final matchesSearch = matchesQuery(_query, [
+                    location?.address,
+                    location?.district,
+                    item.observations,
+                  ]);
+                  return matchesDistrict && matchesSearch;
+                }).toList();
+                final activeFilters = _query.isNotEmpty || _district != null;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 12),
+                    SearchField(
+                      value: _query,
+                      hint: 'Buscar por dirección o distrito',
+                      onChanged: (value) => setState(() => _query = value),
                     ),
+                    const SizedBox(height: 12),
+                    FilterChipsRow<String>(
+                      options: [
+                        const ChipOption(null, 'Todos los distritos'),
+                        for (final district in districts)
+                          ChipOption(district, district),
+                      ],
+                      selected: _district,
+                      onSelected: (value) => setState(() => _district = value),
+                    ),
+                    if (filtered.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      FilterSummary(
+                        shown: filtered.length,
+                        total: items.length,
+                        active: activeFilters,
+                        onReset: _resetFilters,
+                      ),
+                      for (final (i, item) in filtered.indexed)
+                        RequestTile(request: item, index: i),
+                    ] else
+                      EcoEmpty(
+                        title: 'Sin resultados',
+                        message:
+                            'Prueba con otras palabras o limpia los filtros.',
+                        icon: Icons.search_off_rounded,
+                        action: TextButton(
+                          onPressed: _resetFilters,
+                          child: const Text('Limpiar filtros'),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           if ((applications.value ?? const []).isNotEmpty) ...[
             const SectionTitle('Mis postulaciones'),

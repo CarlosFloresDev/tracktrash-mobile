@@ -8,6 +8,7 @@ import '../../core/config.dart';
 import '../../data/models.dart';
 import '../../ui/async_content.dart';
 import '../../ui/eco_design.dart';
+import '../../ui/filters.dart';
 import '../../ui/widgets.dart';
 
 final collectionPointsProvider =
@@ -27,6 +28,15 @@ class PointsPage extends ConsumerStatefulWidget {
 class _PointsPageState extends ConsumerState<PointsPage> {
   final _controller = MapController();
   int? _selected;
+  String _query = '';
+  String? _district;
+
+  void _resetFilters() {
+    setState(() {
+      _query = '';
+      _district = null;
+    });
+  }
 
   @override
   void dispose() {
@@ -63,20 +73,65 @@ class _PointsPageState extends ConsumerState<PointsPage> {
             ),
           );
         }
+        final districts = [
+          for (final district
+              in items
+                  .map((item) => locations[item.locationId]?.district)
+                  .whereType<String>()
+                  .toSet())
+            district,
+        ]..sort();
+        final filtered = items.where((item) {
+          final location = locations[item.locationId];
+          final matchesDistrict =
+              _district == null || location?.district == _district;
+          final matchesSearch = matchesQuery(_query, [
+            item.name,
+            location?.address,
+            location?.district,
+            item.openingHours,
+            item.description,
+          ]);
+          return matchesDistrict && matchesSearch;
+        }).toList();
+        final activeFilters = _query.isNotEmpty || _district != null;
         final withCoordinates = [
-          for (final item in items)
+          for (final item in filtered)
             if (locations[item.locationId]?.hasCoordinates ?? false) item,
         ];
         return Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Puntos de acopio',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SearchField(
+                    value: _query,
+                    hint: 'Buscar punto, dirección u horario',
+                    onChanged: (value) => setState(() => _query = value),
+                  ),
+                  const SizedBox(height: 12),
+                  FilterChipsRow<String>(
+                    options: [
+                      const ChipOption(null, 'Todos'),
+                      for (final district in districts)
+                        ChipOption(district, district),
+                    ],
+                    selected: _district,
+                    onSelected: (value) => setState(() => _district = value),
+                  ),
+                ],
               ),
             ),
             SizedBox(
@@ -137,12 +192,31 @@ class _PointsPageState extends ConsumerState<PointsPage> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
                 children: [
-                  for (final item in items)
-                    _PointCard(
-                      point: item,
-                      location: locations[item.locationId],
-                      selected: item.id == _selected,
-                      onTap: () => _select(item, locations[item.locationId]),
+                  if (filtered.isNotEmpty) ...[
+                    FilterSummary(
+                      shown: filtered.length,
+                      total: items.length,
+                      active: activeFilters,
+                      onReset: _resetFilters,
+                    ),
+                    const SizedBox(height: 12),
+                    for (final item in filtered)
+                      _PointCard(
+                        point: item,
+                        location: locations[item.locationId],
+                        selected: item.id == _selected,
+                        onTap: () => _select(item, locations[item.locationId]),
+                      ),
+                  ] else
+                    EcoEmpty(
+                      title: 'Sin resultados',
+                      message:
+                          'Prueba con otras palabras o limpia los filtros.',
+                      icon: Icons.search_off_rounded,
+                      action: TextButton(
+                        onPressed: _resetFilters,
+                        child: const Text('Limpiar filtros'),
+                      ),
                     ),
                 ],
               ),
@@ -203,9 +277,15 @@ class _PointCard extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.only(right: 8),
+                    minimumSize: const Size(0, 40),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: const TextStyle(fontSize: 15),
+                  ),
                   onPressed: () =>
                       launchUrl(Uri(scheme: 'tel', path: point.phone)),
-                  icon: const Icon(Icons.call_outlined, size: 18),
+                  icon: const Icon(Icons.call_outlined, size: 20),
                   label: Text(point.phone!),
                 ),
               ),

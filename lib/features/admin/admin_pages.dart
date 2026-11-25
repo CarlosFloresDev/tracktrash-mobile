@@ -6,6 +6,7 @@ import '../../data/enums.dart';
 import '../../data/models.dart';
 import '../../ui/async_content.dart';
 import '../../ui/eco_design.dart';
+import '../../ui/filters.dart';
 import '../../ui/widgets.dart';
 import '../requests/request_providers.dart';
 
@@ -106,11 +107,26 @@ _Tag _verificationTag(VerificationStatus status) => switch (status) {
 };
 
 /// Gatherer review: verify or reject documents, activate or deactivate accounts.
-class AdminGatherersPage extends ConsumerWidget {
+class AdminGatherersPage extends ConsumerStatefulWidget {
   const AdminGatherersPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminGatherersPage> createState() => _AdminGatherersPageState();
+}
+
+class _AdminGatherersPageState extends ConsumerState<AdminGatherersPage> {
+  String _query = '';
+  VerificationStatus? _status;
+
+  void _resetFilters() {
+    setState(() {
+      _query = '';
+      _status = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final gatherers = ref.watch(adminGatherersProvider);
     final api = ref.read(apiProvider);
     return RefreshIndicator(
@@ -128,119 +144,175 @@ class AdminGatherersPage extends ConsumerWidget {
           AsyncContent(
             value: gatherers,
             onRetry: () => ref.invalidate(adminGatherersProvider),
-            builder: (items) => items.isEmpty
-                ? const EcoEmpty(
-                    title: 'Aún no hay recolectores',
-                    message: 'Aparecerán aquí cuando se registren.',
-                    icon: Icons.local_shipping_outlined,
-                  )
-                : Column(
-                    children: [
-                      for (final g in items)
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        g.fullName.isEmpty
-                                            ? 'Recolector #${g.gathererId}'
-                                            : g.fullName,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          color: EcoColors.pine,
-                                          fontSize: 16,
-                                        ),
+            builder: (items) {
+              if (items.isEmpty) {
+                return const EcoEmpty(
+                  title: 'Aún no hay recolectores',
+                  message: 'Aparecerán aquí cuando se registren.',
+                  icon: Icons.local_shipping_outlined,
+                );
+              }
+              final filtered = items.where((g) {
+                final matchesStatus =
+                    _status == null || g.verification == _status;
+                final matchesSearch = matchesQuery(_query, [
+                  g.fullName,
+                  g.verificationDocument,
+                  g.description,
+                ]);
+                return matchesStatus && matchesSearch;
+              }).toList();
+              final activeFilters = _query.isNotEmpty || _status != null;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 12),
+                  SearchField(
+                    value: _query,
+                    hint: 'Buscar por nombre o documento',
+                    onChanged: (value) => setState(() => _query = value),
+                  ),
+                  const SizedBox(height: 12),
+                  FilterChipsRow<VerificationStatus>(
+                    options: [
+                      ChipOption(null, 'Todos', count: items.length),
+                      for (final status in VerificationStatus.values)
+                        ChipOption(
+                          status,
+                          status.label,
+                          count: items
+                              .where((g) => g.verification == status)
+                              .length,
+                        ),
+                    ],
+                    selected: _status,
+                    onSelected: (value) => setState(() => _status = value),
+                  ),
+                  if (filtered.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    FilterSummary(
+                      shown: filtered.length,
+                      total: items.length,
+                      active: activeFilters,
+                      onReset: _resetFilters,
+                    ),
+                    for (final g in filtered)
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      g.fullName.isEmpty
+                                          ? 'Recolector #${g.gathererId}'
+                                          : g.fullName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: EcoColors.pine,
+                                        fontSize: 16,
                                       ),
                                     ),
-                                    _verificationTag(g.verification),
-                                  ],
+                                  ),
+                                  _verificationTag(g.verification),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${g.type.label}${g.isActive ? '' : ' · Desactivado'}',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                              if (g.verificationDocument != null)
+                                InfoRow(
+                                  icon: Icons.badge_outlined,
+                                  text: g.verificationDocument!,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${g.type.label}${g.isActive ? '' : ' · Desactivado'}',
-                                  style: Theme.of(context).textTheme.bodyMedium,
+                              if (g.description != null)
+                                InfoRow(
+                                  icon: Icons.notes_rounded,
+                                  text: g.description!,
                                 ),
-                                if (g.verificationDocument != null)
-                                  InfoRow(
-                                    icon: Icons.badge_outlined,
-                                    text: g.verificationDocument!,
-                                  ),
-                                if (g.description != null)
-                                  InfoRow(
-                                    icon: Icons.notes_rounded,
-                                    text: g.description!,
-                                  ),
-                                if (g.supportedResidueTypes.isNotEmpty)
-                                  InfoRow(
-                                    icon: Icons.recycling_rounded,
-                                    text: g.supportedResidueTypes
-                                        .map((r) => r.name)
-                                        .join(', '),
-                                  ),
-                                const SizedBox(height: 10),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    if (g.verification !=
-                                        VerificationStatus.verified)
-                                      FilledButton(
-                                        onPressed: () => _run(
-                                          context,
-                                          ref,
-                                          () => api.updateGatherer(
-                                            g,
-                                            verification:
-                                                VerificationStatus.verified,
-                                          ),
-                                          'Recolector verificado.',
-                                        ),
-                                        child: const Text('Verificar'),
-                                      ),
-                                    if (g.verification !=
-                                        VerificationStatus.rejected)
-                                      OutlinedButton(
-                                        onPressed: () => _run(
-                                          context,
-                                          ref,
-                                          () => api.updateGatherer(
-                                            g,
-                                            verification:
-                                                VerificationStatus.rejected,
-                                          ),
-                                          'Recolector rechazado.',
-                                        ),
-                                        child: const Text('Rechazar'),
-                                      ),
-                                    TextButton(
+                              if (g.supportedResidueTypes.isNotEmpty)
+                                InfoRow(
+                                  icon: Icons.recycling_rounded,
+                                  text: g.supportedResidueTypes
+                                      .map((r) => r.name)
+                                      .join(', '),
+                                ),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  if (g.verification !=
+                                      VerificationStatus.verified)
+                                    FilledButton(
                                       onPressed: () => _run(
                                         context,
                                         ref,
                                         () => api.updateGatherer(
                                           g,
-                                          isActive: !g.isActive,
+                                          verification:
+                                              VerificationStatus.verified,
                                         ),
-                                        g.isActive
-                                            ? 'Recolector desactivado.'
-                                            : 'Recolector activado.',
+                                        'Recolector verificado.',
                                       ),
-                                      child: Text(
-                                        g.isActive ? 'Desactivar' : 'Activar',
-                                      ),
+                                      child: const Text('Verificar'),
                                     ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                  if (g.verification !=
+                                      VerificationStatus.rejected)
+                                    OutlinedButton(
+                                      onPressed: () => _run(
+                                        context,
+                                        ref,
+                                        () => api.updateGatherer(
+                                          g,
+                                          verification:
+                                              VerificationStatus.rejected,
+                                        ),
+                                        'Recolector rechazado.',
+                                      ),
+                                      child: const Text('Rechazar'),
+                                    ),
+                                  TextButton(
+                                    onPressed: () => _run(
+                                      context,
+                                      ref,
+                                      () => api.updateGatherer(
+                                        g,
+                                        isActive: !g.isActive,
+                                      ),
+                                      g.isActive
+                                          ? 'Recolector desactivado.'
+                                          : 'Recolector activado.',
+                                    ),
+                                    child: Text(
+                                      g.isActive ? 'Desactivar' : 'Activar',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                  ] else
+                    EcoEmpty(
+                      title: 'Sin resultados',
+                      message:
+                          'Prueba con otras palabras o limpia los filtros.',
+                      icon: Icons.search_off_rounded,
+                      action: TextButton(
+                        onPressed: _resetFilters,
+                        child: const Text('Limpiar filtros'),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -258,6 +330,14 @@ class AdminUsersPage extends ConsumerStatefulWidget {
 
 class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
   String _query = '';
+  UserRole? _role;
+
+  void _resetFilters() {
+    setState(() {
+      _query = '';
+      _role = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -276,15 +356,12 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
             'Usuarios',
             'Cuentas registradas. Desactiva las que no deban ingresar.',
           ),
-          TextField(
-            decoration: const InputDecoration(
-              labelText: 'Buscar por nombre o correo',
-              prefixIcon: Icon(Icons.search_rounded),
-            ),
-            onChanged: (value) =>
-                setState(() => _query = value.trim().toLowerCase()),
+          SearchField(
+            value: _query,
+            hint: 'Buscar por nombre o correo',
+            onChanged: (value) => setState(() => _query = value),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           AsyncContent(
             value: users,
             onRetry: () => ref.invalidate(adminUsersProvider),
@@ -292,62 +369,91 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
               final visible = items
                   .where(
                     (u) =>
-                        _query.isEmpty ||
-                        u.fullName.toLowerCase().contains(_query) ||
-                        u.email.toLowerCase().contains(_query),
+                        (_role == null || u.role == _role) &&
+                        matchesQuery(_query, [u.fullName, u.email]),
                   )
                   .toList();
-              if (visible.isEmpty) {
-                return const EcoEmpty(
-                  title: 'Sin resultados',
-                  message: 'Prueba con otro nombre o correo.',
-                  icon: Icons.person_search_outlined,
-                );
-              }
               return Column(
                 children: [
-                  for (final u in visible)
-                    Card(
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
-                        leading: CircleAvatar(
-                          backgroundColor: u.isActive
-                              ? EcoColors.lime
-                              : const Color(0xFFE7E5E4),
-                          child: Text(
-                            u.initials,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: EcoColors.pine,
+                  FilterChipsRow<UserRole>(
+                    options: [
+                      ChipOption(null, 'Todos', count: items.length),
+                      for (final role in UserRole.values)
+                        ChipOption(
+                          role,
+                          role.label,
+                          count: items.where((u) => u.role == role).length,
+                        ),
+                    ],
+                    selected: _role,
+                    onSelected: (value) => setState(() => _role = value),
+                  ),
+                  if (visible.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    FilterSummary(
+                      shown: visible.length,
+                      total: items.length,
+                      active: _query.isNotEmpty || _role != null,
+                      onReset: _resetFilters,
+                    ),
+                    for (final u in visible)
+                      Card(
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.fromLTRB(
+                            16,
+                            6,
+                            8,
+                            6,
+                          ),
+                          leading: CircleAvatar(
+                            backgroundColor: u.isActive
+                                ? EcoColors.lime
+                                : const Color(0xFFE7E5E4),
+                            child: Text(
+                              u.initials,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: EcoColors.pine,
+                              ),
                             ),
                           ),
-                        ),
-                        title: Text(
-                          u.fullName,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text(
-                          '${u.role.label} · ${u.email}${u.isActive ? '' : ' · Inactivo'}',
-                        ),
-                        trailing: u.userId == me.userId
-                            ? null
-                            : Switch(
-                                value: u.isActive,
-                                onChanged: (value) => _run(
-                                  context,
-                                  ref,
-                                  () => api.updateUser(
-                                    u,
-                                    firstName: u.firstName,
-                                    lastName: u.lastName,
-                                    phone: u.phone,
-                                    isActive: value,
+                          title: Text(
+                            u.fullName,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          subtitle: Text(
+                            '${u.role.label} · ${u.email}${u.isActive ? '' : ' · Inactivo'}',
+                          ),
+                          trailing: u.userId == me.userId
+                              ? null
+                              : Switch(
+                                  value: u.isActive,
+                                  onChanged: (value) => _run(
+                                    context,
+                                    ref,
+                                    () => api.updateUser(
+                                      u,
+                                      firstName: u.firstName,
+                                      lastName: u.lastName,
+                                      phone: u.phone,
+                                      isActive: value,
+                                    ),
+                                    value
+                                        ? 'Cuenta activada.'
+                                        : 'Cuenta desactivada.',
                                   ),
-                                  value
-                                      ? 'Cuenta activada.'
-                                      : 'Cuenta desactivada.',
                                 ),
-                              ),
+                        ),
+                      ),
+                  ] else
+                    EcoEmpty(
+                      title: 'Sin resultados',
+                      message:
+                          'Prueba con otras palabras o limpia los filtros.',
+                      icon: Icons.person_search_outlined,
+                      action: TextButton(
+                        onPressed: _resetFilters,
+                        child: const Text('Limpiar filtros'),
                       ),
                     ),
                 ],
@@ -361,11 +467,26 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
 }
 
 /// Material catalog: create, edit and activate residue types. Admin only.
-class AdminCatalogScreen extends ConsumerWidget {
+class AdminCatalogScreen extends ConsumerStatefulWidget {
   const AdminCatalogScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminCatalogScreen> createState() => _AdminCatalogScreenState();
+}
+
+class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
+  String _query = '';
+  ResidueCategory? _category;
+
+  void _resetFilters() {
+    setState(() {
+      _query = '';
+      _category = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final catalog = ref.watch(residueTypesProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Catálogo de materiales')),
@@ -383,31 +504,82 @@ class AdminCatalogScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
             children: [
+              SearchField(
+                value: _query,
+                hint: 'Buscar material',
+                onChanged: (value) => setState(() => _query = value),
+              ),
+              const SizedBox(height: 12),
               AsyncContent(
                 value: catalog,
                 onRetry: () => ref.invalidate(residueTypesProvider),
-                builder: (items) => Column(
-                  children: [
-                    for (final item in items)
-                      Card(
-                        child: ListTile(
-                          onTap: () => _edit(context, ref, item),
-                          leading: MaterialBadge(
-                            kind: materialKind(item.name),
-                            size: 40,
-                          ),
-                          title: Text(
-                            item.name,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          subtitle: Text(
-                            '${item.category.label}${item.isRecyclable ? '' : ' · No reciclable'}${item.isActive ? '' : ' · Inactivo'}',
-                          ),
-                          trailing: const Icon(Icons.edit_outlined),
-                        ),
+                builder: (items) {
+                  final filtered = items.where((item) {
+                    final matchesCategory =
+                        _category == null || item.category == _category;
+                    final matchesSearch = matchesQuery(_query, [
+                      item.name,
+                      item.description,
+                      item.instructions,
+                    ]);
+                    return matchesCategory && matchesSearch;
+                  }).toList();
+                  final activeFilters = _query.isNotEmpty || _category != null;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FilterChipsRow<ResidueCategory>(
+                        options: [
+                          const ChipOption(null, 'Todas'),
+                          for (final category in ResidueCategory.values)
+                            ChipOption(category, category.label),
+                        ],
+                        selected: _category,
+                        onSelected: (value) =>
+                            setState(() => _category = value),
                       ),
-                  ],
-                ),
+                      if (filtered.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        FilterSummary(
+                          shown: filtered.length,
+                          total: items.length,
+                          active: activeFilters,
+                          onReset: _resetFilters,
+                        ),
+                        for (final item in filtered)
+                          Card(
+                            child: ListTile(
+                              onTap: () => _edit(context, ref, item),
+                              leading: MaterialBadge(
+                                kind: materialKind(item.name),
+                                size: 40,
+                              ),
+                              title: Text(
+                                item.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${item.category.label}${item.isRecyclable ? '' : ' · No reciclable'}${item.isActive ? '' : ' · Inactivo'}',
+                              ),
+                              trailing: const Icon(Icons.edit_outlined),
+                            ),
+                          ),
+                      ] else
+                        EcoEmpty(
+                          title: 'Sin resultados',
+                          message:
+                              'Prueba con otras palabras o limpia los filtros.',
+                          icon: Icons.search_off_rounded,
+                          action: TextButton(
+                            onPressed: _resetFilters,
+                            child: const Text('Limpiar filtros'),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ],
           ),
