@@ -30,11 +30,13 @@ class _PointsPageState extends ConsumerState<PointsPage> {
   int? _selected;
   String _query = '';
   String? _district;
+  int _page = 1;
 
   void _resetFilters() {
     setState(() {
       _query = '';
       _district = null;
+      _page = 1;
     });
   }
 
@@ -94,6 +96,9 @@ class _PointsPageState extends ConsumerState<PointsPage> {
           ]);
           return matchesDistrict && matchesSearch;
         }).toList();
+        final pageCount = (filtered.length / kPageSize).ceil();
+        final page = pageCount == 0 ? 1 : _page.clamp(1, pageCount).toInt();
+        final visible = pageOf(filtered, page);
         final activeFilters = _query.isNotEmpty || _district != null;
         final withCoordinates = [
           for (final item in filtered)
@@ -119,7 +124,10 @@ class _PointsPageState extends ConsumerState<PointsPage> {
                   SearchField(
                     value: _query,
                     hint: 'Buscar punto, dirección u horario',
-                    onChanged: (value) => setState(() => _query = value),
+                    onChanged: (value) => setState(() {
+                      _query = value;
+                      _page = 1;
+                    }),
                   ),
                   const SizedBox(height: 12),
                   FilterChipsRow<String>(
@@ -129,7 +137,10 @@ class _PointsPageState extends ConsumerState<PointsPage> {
                         ChipOption(district, district),
                     ],
                     selected: _district,
-                    onSelected: (value) => setState(() => _district = value),
+                    onSelected: (value) => setState(() {
+                      _district = value;
+                      _page = 1;
+                    }),
                   ),
                 ],
               ),
@@ -200,13 +211,20 @@ class _PointsPageState extends ConsumerState<PointsPage> {
                       onReset: _resetFilters,
                     ),
                     const SizedBox(height: 12),
-                    for (final item in filtered)
+                    for (final item in visible)
                       _PointCard(
                         point: item,
                         location: locations[item.locationId],
                         selected: item.id == _selected,
                         onTap: () => _select(item, locations[item.locationId]),
                       ),
+                    const SizedBox(height: 8),
+                    PaginationBar(
+                      page: page,
+                      pageCount: pageCount,
+                      total: filtered.length,
+                      onChanged: (value) => setState(() => _page = value),
+                    ),
                   ] else
                     EcoEmpty(
                       title: 'Sin resultados',

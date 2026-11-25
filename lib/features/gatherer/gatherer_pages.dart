@@ -22,11 +22,13 @@ class AvailablePage extends ConsumerStatefulWidget {
 class _AvailablePageState extends ConsumerState<AvailablePage> {
   String _query = '';
   String? _district;
+  int _page = 1;
 
   void _resetFilters() {
     setState(() {
       _query = '';
       _district = null;
+      _page = 1;
     });
   }
 
@@ -106,6 +108,11 @@ class _AvailablePageState extends ConsumerState<AvailablePage> {
                   ]);
                   return matchesDistrict && matchesSearch;
                 }).toList();
+                final pageCount = (filtered.length / kPageSize).ceil();
+                final page = pageCount == 0
+                    ? 1
+                    : _page.clamp(1, pageCount).toInt();
+                final visible = pageOf(filtered, page);
                 final activeFilters = _query.isNotEmpty || _district != null;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -114,7 +121,10 @@ class _AvailablePageState extends ConsumerState<AvailablePage> {
                     SearchField(
                       value: _query,
                       hint: 'Buscar por dirección o distrito',
-                      onChanged: (value) => setState(() => _query = value),
+                      onChanged: (value) => setState(() {
+                        _query = value;
+                        _page = 1;
+                      }),
                     ),
                     const SizedBox(height: 12),
                     FilterChipsRow<String>(
@@ -124,7 +134,10 @@ class _AvailablePageState extends ConsumerState<AvailablePage> {
                           ChipOption(district, district),
                       ],
                       selected: _district,
-                      onSelected: (value) => setState(() => _district = value),
+                      onSelected: (value) => setState(() {
+                        _district = value;
+                        _page = 1;
+                      }),
                     ),
                     if (filtered.isNotEmpty) ...[
                       const SizedBox(height: 12),
@@ -134,8 +147,15 @@ class _AvailablePageState extends ConsumerState<AvailablePage> {
                         active: activeFilters,
                         onReset: _resetFilters,
                       ),
-                      for (final (i, item) in filtered.indexed)
+                      for (final (i, item) in visible.indexed)
                         RequestTile(request: item, index: i),
+                      const SizedBox(height: 8),
+                      PaginationBar(
+                        page: page,
+                        pageCount: pageCount,
+                        total: filtered.length,
+                        onChanged: (value) => setState(() => _page = value),
+                      ),
                     ] else
                       EcoEmpty(
                         title: 'Sin resultados',
@@ -194,6 +214,7 @@ class ServicesPage extends ConsumerStatefulWidget {
 
 class _ServicesPageState extends ConsumerState<ServicesPage> {
   bool _active = true;
+  int _page = 1;
 
   @override
   Widget build(BuildContext context) {
@@ -217,8 +238,10 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
               ButtonSegment(value: false, label: Text('Terminados')),
             ],
             selected: {_active},
-            onSelectionChanged: (value) =>
-                setState(() => _active = value.first),
+            onSelectionChanged: (value) => setState(() {
+              _active = value.first;
+              _page = 1;
+            }),
           ),
           const SizedBox(height: 16),
           AsyncContent(
@@ -231,6 +254,11 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
                         (item.service?.status.isActive ?? false) == _active,
                   )
                   .toList();
+              final pageCount = (visible.length / kPageSize).ceil();
+              final page = pageCount == 0
+                  ? 1
+                  : _page.clamp(1, pageCount).toInt();
+              final pageItems = pageOf(visible, page);
               if (visible.isEmpty) {
                 return EcoEmpty(
                   title: _active
@@ -244,8 +272,15 @@ class _ServicesPageState extends ConsumerState<ServicesPage> {
               }
               return Column(
                 children: [
-                  for (final item in visible)
+                  for (final item in pageItems)
                     RequestTile(request: item.request, location: item.location),
+                  const SizedBox(height: 8),
+                  PaginationBar(
+                    page: page,
+                    pageCount: pageCount,
+                    total: visible.length,
+                    onChanged: (value) => setState(() => _page = value),
+                  ),
                 ],
               );
             },

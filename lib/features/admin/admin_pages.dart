@@ -117,11 +117,13 @@ class AdminGatherersPage extends ConsumerStatefulWidget {
 class _AdminGatherersPageState extends ConsumerState<AdminGatherersPage> {
   String _query = '';
   VerificationStatus? _status;
+  int _page = 1;
 
   void _resetFilters() {
     setState(() {
       _query = '';
       _status = null;
+      _page = 1;
     });
   }
 
@@ -162,6 +164,11 @@ class _AdminGatherersPageState extends ConsumerState<AdminGatherersPage> {
                 ]);
                 return matchesStatus && matchesSearch;
               }).toList();
+              final pageCount = (filtered.length / kPageSize).ceil();
+              final page = pageCount == 0
+                  ? 1
+                  : _page.clamp(1, pageCount).toInt();
+              final visible = pageOf(filtered, page);
               final activeFilters = _query.isNotEmpty || _status != null;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -170,7 +177,10 @@ class _AdminGatherersPageState extends ConsumerState<AdminGatherersPage> {
                   SearchField(
                     value: _query,
                     hint: 'Buscar por nombre o documento',
-                    onChanged: (value) => setState(() => _query = value),
+                    onChanged: (value) => setState(() {
+                      _query = value;
+                      _page = 1;
+                    }),
                   ),
                   const SizedBox(height: 12),
                   FilterChipsRow<VerificationStatus>(
@@ -186,7 +196,10 @@ class _AdminGatherersPageState extends ConsumerState<AdminGatherersPage> {
                         ),
                     ],
                     selected: _status,
-                    onSelected: (value) => setState(() => _status = value),
+                    onSelected: (value) => setState(() {
+                      _status = value;
+                      _page = 1;
+                    }),
                   ),
                   if (filtered.isNotEmpty) ...[
                     const SizedBox(height: 12),
@@ -196,7 +209,7 @@ class _AdminGatherersPageState extends ConsumerState<AdminGatherersPage> {
                       active: activeFilters,
                       onReset: _resetFilters,
                     ),
-                    for (final g in filtered)
+                    for (final g in visible)
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -299,6 +312,13 @@ class _AdminGatherersPageState extends ConsumerState<AdminGatherersPage> {
                           ),
                         ),
                       ),
+                    const SizedBox(height: 8),
+                    PaginationBar(
+                      page: page,
+                      pageCount: pageCount,
+                      total: filtered.length,
+                      onChanged: (value) => setState(() => _page = value),
+                    ),
                   ] else
                     EcoEmpty(
                       title: 'Sin resultados',
@@ -331,11 +351,13 @@ class AdminUsersPage extends ConsumerStatefulWidget {
 class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
   String _query = '';
   UserRole? _role;
+  int _page = 1;
 
   void _resetFilters() {
     setState(() {
       _query = '';
       _role = null;
+      _page = 1;
     });
   }
 
@@ -359,7 +381,10 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
           SearchField(
             value: _query,
             hint: 'Buscar por nombre o correo',
-            onChanged: (value) => setState(() => _query = value),
+            onChanged: (value) => setState(() {
+              _query = value;
+              _page = 1;
+            }),
           ),
           const SizedBox(height: 12),
           AsyncContent(
@@ -373,6 +398,11 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                         matchesQuery(_query, [u.fullName, u.email]),
                   )
                   .toList();
+              final pageCount = (visible.length / kPageSize).ceil();
+              final page = pageCount == 0
+                  ? 1
+                  : _page.clamp(1, pageCount).toInt();
+              final pageItems = pageOf(visible, page);
               return Column(
                 children: [
                   FilterChipsRow<UserRole>(
@@ -386,7 +416,10 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                         ),
                     ],
                     selected: _role,
-                    onSelected: (value) => setState(() => _role = value),
+                    onSelected: (value) => setState(() {
+                      _role = value;
+                      _page = 1;
+                    }),
                   ),
                   if (visible.isNotEmpty) ...[
                     const SizedBox(height: 12),
@@ -396,7 +429,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                       active: _query.isNotEmpty || _role != null,
                       onReset: _resetFilters,
                     ),
-                    for (final u in visible)
+                    for (final u in pageItems)
                       Card(
                         child: ListTile(
                           contentPadding: const EdgeInsets.fromLTRB(
@@ -445,6 +478,13 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
                                 ),
                         ),
                       ),
+                    const SizedBox(height: 8),
+                    PaginationBar(
+                      page: page,
+                      pageCount: pageCount,
+                      total: visible.length,
+                      onChanged: (value) => setState(() => _page = value),
+                    ),
                   ] else
                     EcoEmpty(
                       title: 'Sin resultados',
@@ -477,11 +517,13 @@ class AdminCatalogScreen extends ConsumerStatefulWidget {
 class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
   String _query = '';
   ResidueCategory? _category;
+  int _page = 1;
 
   void _resetFilters() {
     setState(() {
       _query = '';
       _category = null;
+      _page = 1;
     });
   }
 
@@ -507,7 +549,10 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
               SearchField(
                 value: _query,
                 hint: 'Buscar material',
-                onChanged: (value) => setState(() => _query = value),
+                onChanged: (value) => setState(() {
+                  _query = value;
+                  _page = 1;
+                }),
               ),
               const SizedBox(height: 12),
               AsyncContent(
@@ -524,6 +569,11 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
                     ]);
                     return matchesCategory && matchesSearch;
                   }).toList();
+                  final pageCount = (filtered.length / kPageSize).ceil();
+                  final page = pageCount == 0
+                      ? 1
+                      : _page.clamp(1, pageCount).toInt();
+                  final visible = pageOf(filtered, page);
                   final activeFilters = _query.isNotEmpty || _category != null;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -535,8 +585,10 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
                             ChipOption(category, category.label),
                         ],
                         selected: _category,
-                        onSelected: (value) =>
-                            setState(() => _category = value),
+                        onSelected: (value) => setState(() {
+                          _category = value;
+                          _page = 1;
+                        }),
                       ),
                       if (filtered.isNotEmpty) ...[
                         const SizedBox(height: 12),
@@ -546,7 +598,7 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
                           active: activeFilters,
                           onReset: _resetFilters,
                         ),
-                        for (final item in filtered)
+                        for (final item in visible)
                           Card(
                             child: ListTile(
                               onTap: () => _edit(context, ref, item),
@@ -566,6 +618,13 @@ class _AdminCatalogScreenState extends ConsumerState<AdminCatalogScreen> {
                               trailing: const Icon(Icons.edit_outlined),
                             ),
                           ),
+                        const SizedBox(height: 8),
+                        PaginationBar(
+                          page: page,
+                          pageCount: pageCount,
+                          total: filtered.length,
+                          onChanged: (value) => setState(() => _page = value),
+                        ),
                       ] else
                         EcoEmpty(
                           title: 'Sin resultados',

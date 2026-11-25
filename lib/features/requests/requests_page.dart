@@ -21,11 +21,13 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
   bool _active = true;
   String _query = '';
   RequestStatus? _status;
+  int _page = 1;
 
   void _resetFilters() {
     setState(() {
       _query = '';
       _status = null;
+      _page = 1;
     });
   }
 
@@ -58,6 +60,7 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
             onSelectionChanged: (value) => setState(() {
               _active = value.first;
               _status = null;
+              _page = 1;
             }),
           ),
           AsyncContent(
@@ -102,6 +105,11 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
                 ]);
                 return matchesStatus && matchesSearch;
               }).toList();
+              final pageCount = (filtered.length / kPageSize).ceil();
+              final page = pageCount == 0
+                  ? 1
+                  : _page.clamp(1, pageCount).toInt();
+              final visible = pageOf(filtered, page);
               final activeFilters = _query.isNotEmpty || _status != null;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -110,7 +118,10 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
                   SearchField(
                     value: _query,
                     hint: 'Buscar por N°, dirección o distrito',
-                    onChanged: (value) => setState(() => _query = value),
+                    onChanged: (value) => setState(() {
+                      _query = value;
+                      _page = 1;
+                    }),
                   ),
                   const SizedBox(height: 12),
                   FilterChipsRow<RequestStatus>(
@@ -126,7 +137,10 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
                         ),
                     ],
                     selected: _status,
-                    onSelected: (value) => setState(() => _status = value),
+                    onSelected: (value) => setState(() {
+                      _status = value;
+                      _page = 1;
+                    }),
                   ),
                   if (filtered.isNotEmpty) ...[
                     const SizedBox(height: 12),
@@ -136,8 +150,15 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
                       active: activeFilters,
                       onReset: _resetFilters,
                     ),
-                    for (final (i, item) in filtered.indexed)
+                    for (final (i, item) in visible.indexed)
                       RequestTile(request: item, index: i),
+                    const SizedBox(height: 8),
+                    PaginationBar(
+                      page: page,
+                      pageCount: pageCount,
+                      total: filtered.length,
+                      onChanged: (value) => setState(() => _page = value),
+                    ),
                   ] else
                     EcoEmpty(
                       title: 'Sin resultados',

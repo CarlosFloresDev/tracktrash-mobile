@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 import 'eco_design.dart';
 
+const kPageSize = 10;
+
+List<T> pageOf<T>(List<T> items, int page) {
+  final start = (page < 1 ? 0 : page - 1) * kPageSize;
+  if (start >= items.length) return [];
+  final end = start + kPageSize;
+  return items.sublist(start, end > items.length ? items.length : end);
+}
+
 const _accents = {
   'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u', 'ñ': 'n', //
   'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u', 'Ü': 'u', 'Ñ': 'n',
@@ -165,4 +174,48 @@ class FilterSummary extends StatelessWidget {
         TextButton(onPressed: onReset, child: const Text('Limpiar filtros')),
     ],
   );
+}
+
+class PaginationBar extends StatelessWidget {
+  const PaginationBar({
+    super.key,
+    required this.page,
+    required this.pageCount,
+    required this.total,
+    required this.onChanged,
+  });
+
+  final int page;
+  final int pageCount;
+  final int total;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (pageCount <= 1) return const SizedBox.shrink();
+    return Row(
+      children: [
+        IconButton.outlined(
+          tooltip: 'Página anterior',
+          onPressed: page <= 1 ? null : () => onChanged(page - 1),
+          icon: const Icon(Icons.chevron_left_rounded),
+        ),
+        Expanded(
+          child: Text(
+            'Página $page de $pageCount',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: EcoColors.pine,
+            ),
+          ),
+        ),
+        IconButton.outlined(
+          tooltip: 'Página siguiente',
+          onPressed: page >= pageCount ? null : () => onChanged(page + 1),
+          icon: const Icon(Icons.chevron_right_rounded),
+        ),
+      ],
+    );
+  }
 }
